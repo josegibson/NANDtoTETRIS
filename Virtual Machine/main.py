@@ -10,7 +10,7 @@ if filepath.split('.')[-1] != 'vm':
     exit()
 
 parser  = Parser()
-cw = CodeWriter()
+cw = CodeWriter(filename=filepath.split('.')[0])
 
 vmcode = ''
 asmcode = ''
