@@ -6,7 +6,7 @@ class CodeWriter():
         self.filename = filename
 
     def get_label(self, segment_id, i):
-        print (segment_id, i)
+        # print (segment_id, i)
         if segment_id == 'local':
             return 'LCL'
         elif segment_id == 'argument':
@@ -23,7 +23,15 @@ class CodeWriter():
             return 'THAT'
         elif segment_id == 'temp':
             return '5'
+        
+    def is_branching_cmd(self, cmd):
+        return cmd in ['label', 'if-goto']
+        
+    def is_memory_cmd(self, cmd):
+        return cmd in ['push', 'pop']
 
+    def is_arthmetic_cmd(self, cmd):
+        return cmd in ['neg', 'not', 'add', 'sub', 'and', 'or', 'eq', 'gt', 'lt']
         
     def get_operation_commands(self, op):
         res = []
@@ -66,9 +74,11 @@ class CodeWriter():
         for code in codelist:
             asm.append(f'\n// {code}')
             code = code.split()
-            if len(code) == 1:
+            if self.is_arthmetic_cmd(code[0]):
                 asm.extend(self.get_operation_commands(code[0]))
-            else:
+            elif self.is_branching_cmd(code[0]):
+                pass 
+            elif self.is_memory_cmd(code[0]):
                 stk_op = code[0]
                 segment = code[1]
                 i = code[2]
