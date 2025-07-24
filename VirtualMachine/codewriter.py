@@ -6,23 +6,23 @@ class CodeWriter():
         self.filename = filename
 
     def get_label(self, segment_id, i):
-        # print (segment_id, i)
-        if segment_id == 'local':
-            return 'LCL'
-        elif segment_id == 'argument':
-            return 'ARG'
-        elif segment_id == 'this':
-            return 'THIS'
-        elif segment_id == 'that':
-            return 'THAT'
-        elif segment_id == 'static':
+
+        self.label = {
+            'local': 'LCL',
+            'argument': 'ARG',
+            'this': 'THIS',
+            'that': 'THAT',
+            ('pointer', 0): 'THIS',
+            ('pointer', 1): 'THAT',
+            'temp': '5' 
+        }
+        
+        if segment_id == 'static':
             return f"{self.filename}.{i}"
-        elif segment_id == 'pointer' and i == '0':
-            return 'THIS'
-        elif segment_id == 'pointer' and i == '1':
-            return 'THAT'
-        elif segment_id == 'temp':
-            return '5'
+        elif segment_id == 'pointer':
+            return self.label[(segment_id, i)]
+        else:
+            return self.label[segment_id]
         
     def is_branching_cmd(self, cmd):
         return cmd in ['label', 'if-goto']
@@ -33,7 +33,7 @@ class CodeWriter():
     def is_arthmetic_cmd(self, cmd):
         return cmd in ['neg', 'not', 'add', 'sub', 'and', 'or', 'eq', 'gt', 'lt']
         
-    def get_operation_commands(self, op):
+    def translate_arthmetic_commands(self, op):
         res = []
 
         if op == 'neg':
@@ -75,7 +75,7 @@ class CodeWriter():
             asm.append(f'\n// {code}')
             code = code.split()
             if self.is_arthmetic_cmd(code[0]):
-                asm.extend(self.get_operation_commands(code[0]))
+                asm.extend(self.translate_arthmetic_commands(code[0]))
             elif self.is_branching_cmd(code[0]):
                 pass 
             elif self.is_memory_cmd(code[0]):
