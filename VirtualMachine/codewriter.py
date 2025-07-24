@@ -12,8 +12,8 @@ class CodeWriter():
             'argument': 'ARG',
             'this': 'THIS',
             'that': 'THAT',
-            ('pointer', 0): 'THIS',
-            ('pointer', 1): 'THAT',
+            ('pointer', '0'): 'THIS',
+            ('pointer', '1'): 'THAT',
             'temp': '5' 
         }
         
