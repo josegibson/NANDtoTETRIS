@@ -5,7 +5,13 @@ class CodeWriter():
         self.label_id = 0
         self.filename = filename
 
-    def get_label(self, segment_id, i):
+        # function : nLocalVars
+        self.function_map = {}
+
+        # function : seed
+        self.function_seed = {}
+
+    def _get_label(self, segment_id, i):
 
         self.label = {
             'local': 'LCL',
@@ -23,17 +29,9 @@ class CodeWriter():
             return self.label[(segment_id, i)]
         else:
             return self.label[segment_id]
-        
-    def is_branching_cmd(self, cmd):
-        return cmd in ['label', 'if-goto']
-        
-    def is_memory_cmd(self, cmd):
-        return cmd in ['push', 'pop']
-
-    def is_arthmetic_cmd(self, cmd):
-        return cmd in ['neg', 'not', 'add', 'sub', 'and', 'or', 'eq', 'gt', 'lt']
-        
-    def translate_arthmetic_commands(self, op):
+            
+    def _translate_arthmetic_commands(self, instruction):
+        op = instruction[0]
         res = []
 
         if op == 'neg':
@@ -69,64 +67,137 @@ class CodeWriter():
             res.extend(['@SP', 'M=M+1'])        
         return res
 
-    def translate(self, codelist):
+    def _translate_memory_commands(self, instruction):
+        res = []
+        stk_op = instruction[0]
+        segment = instruction[1]
+        i = instruction[2]
+
+        if stk_op == 'push':
+            # Setting the target value to D
+            res.extend([f'@{i}', 'D=A'])
+            if segment != 'constant':
+                if segment == 'temp':
+                    res.extend([f'@5', 'D=D+A', 'A=D', 'D=M'])
+                elif segment == 'pointer':
+                    res.extend([f'@{self._get_label(segment, i)}', 'D=M'])
+                else:
+                    res.extend([f'@{self._get_label(segment, i)}', 'D=D+M', 'A=D', 'D=M'])
+            # Incrementing SP and adding to stack
+            res.extend(['@SP', 'A=M', 'M=D', '@SP', 'M=M+1'])
+        
+        elif stk_op == 'pop':
+            # temp = destination address
+            if segment == 'temp':
+                res.extend([f'@{i}', 'D=A', '@5', 'D=D+A', '@temp', 'M=D'])
+            elif segment == 'pointer':
+                res.extend([f'@{self._get_label(segment, i)}', 'D=A', '@temp', 'M=D'])
+            else:
+                res.extend([f'@{i}', 'D=A', f'@{self._get_label(segment, i)}', 'A=M', 'D=D+A', '@temp', 'M=D'])
+            # pop the stack to D
+            res.extend(['@SP', 'A=M-1', 'D=M'])
+            # Opening the address saved in temp and setting D to it
+            res.extend(['@temp', 'A=M', 'M=D'])  
+            # Decrement SP
+            res.extend(['@SP', 'M=M-1'])
+
+        return res
+
+    def _translate_branching_commands(self, instruction):
+        res = []
+        if instruction[0] == 'label':
+            res.extend([f"({instruction[1]})"])
+        elif instruction[0] == 'if-goto':
+            res.extend(['@SP', 'AM=M-1', 'D=M', f"@{instruction[1]}", 'D;JGT'])
+        elif instruction[0] == 'goto':
+            res.extend([f'@{instruction[1]}', '0;JMP'])
+        
+        return res
+
+    def _translate_function_commands(self, instruction):
+        res = []
+        if instruction[0] == 'function':
+            # Add to the function map, along with the local variables requirements
+            self.function_map[instruction[1]] = instruction[2]
+            self.function_seed[instruction[1]] = 0
+
+            # Add (function name) to the asm command (filename already included int the functioname in vmcode)
+            res.extend([f'({instruction[1]})'])
+
+            # Setting up the local variabels to 0
+            res.extend(['@0', 'D=A'])
+            for i in range(instruction[2]):
+                res.extend(['@SP', 'A=M', 'M=D', '@SP', 'M=M+1'])
+
+        elif instruction[0] == 'call':
+            # Create a label for the return address
+            retAddr = "something for now"
+
+
+            # Save the current frame
+            res.extend([f'@{retAddr}', 'D=A', '@SP', 'A=M', 'M=D', '@SP', 'A=M', 'M=D', '@SP', 'M=M+1']) # Save the return address(*SP - nArg) and increment SP
+            res.extend(['@ARG', 'D=M', '@SP', 'M=D', '@SP', 'M=M+1']) # Save ARG and increment
+            res.extend(['@LCL', 'D=M', '@SP', 'M=D', '@SP', 'M=M+1']) # Save LCL and increment
+            res.extend(['@THIS', 'D=M', '@SP', 'M=D', '@SP', 'M=M+1']) # Save THIS and increment
+            res.extend(['@THAT', 'D=M', '@SP', 'M=D', '@SP', 'M=M+1']) # Save THAT and increment
+
+            # Set the frame for this current function
+            res.extend(['@5', 'D=A', '@SP', 'D=M-D', 'A=D', 'D=M', '@ARG', 'M=D']) # Setup the ARG since it is equal to return value
+            res.extend(['@SP', 'D=M', '@LCL', 'M=D']) # Setup LCL since it is equal to *SP
+            
+            # Not defining THIS or THAT, this is required only for a constructor function
+
+            # # Set up the local variables required using lookup
+            # res.extend(['@0', 'D=A', '@SP', 'A=M'])
+            # for i in range(self.function_map[instruction[1]]):
+            #     res.extend(['M=D', 'A=A+1', '@SP', 'M=M+1']) # Set 0 and increment SP. Note: D = 0
+
+            # Do @function label and jump
+            res.extend([f'@{instruction[1]}', '0;JMP'])
+            res.extend([f'({retAddr})'])
+
+        elif instruction[0] == 'return':
+            # Restore the frame
+            # exepcted return value at *ARG
+
+            # SP = LCL
+            # ARG = *SP - 4
+            # LCL = *SP - 3
+            # THIS = *SP - 2
+            # THAT = *SP - 1
+            # SP = SP - 5
+            pass
+
+        return res
+
+    def translate_instruction(self, instruction):
+        instruction = instruction.split()
+        if instruction[0] in ['label', 'if-goto', 'goto']:
+            return self._translate_branching_commands(instruction)
+        elif instruction[0] in ['push', 'pop']:
+            return self._translate_memory_commands(instruction)
+        elif instruction[0] in ['neg', 'not', 'add', 'sub', 'and', 'or', 'eq', 'gt', 'lt']:
+            return self._translate_arthmetic_commands(instruction)
+        elif instruction[0] in ['function', 'call', 'return']:
+            return self._translate_function_commands(instruction)
+        else:
+            raise KeyError(f'Command not configured: {instruction}')
+
+    def translate(self, instruction_list):
         asm = []
-        for code in codelist:
-            asm.append(f'\n// {code}')
-            code = code.split()
-            if self.is_arthmetic_cmd(code[0]):
-                asm.extend(self.translate_arthmetic_commands(code[0]))
-            elif self.is_branching_cmd(code[0]):
-                pass 
-            elif self.is_memory_cmd(code[0]):
-                stk_op = code[0]
-                segment = code[1]
-                i = code[2]
-
-                if stk_op == 'push':
-
-                    # Setting the target value to D
-                    asm.extend([f'@{i}', 'D=A'])
-
-                    if segment != 'constant':
-                        if segment == 'temp':
-                            asm.extend([f'@5', 'D=D+A', 'A=D', 'D=M'])
-                        elif segment == 'pointer':
-                            asm.extend([f'@{self.get_label(segment, i)}', 'D=M'])
-                        else:
-                            asm.extend([f'@{self.get_label(segment, i)}', 'D=D+M', 'A=D', 'D=M'])
-
-                    # Incrementing SP and adding to stack
-                    asm.extend(['@SP', 'A=M', 'M=D', '@SP', 'M=M+1'])
-                
-                elif stk_op == 'pop':
-
-                    # temp = destination address
-                    if segment == 'temp':
-                        asm.extend([f'@{i}', 'D=A', '@5', 'D=D+A', '@temp', 'M=D'])
-                    elif segment == 'pointer':
-                        asm.extend([f'@{self.get_label(segment, i)}', 'D=A', '@temp', 'M=D'])
-                    else:
-                        asm.extend([f'@{i}', 'D=A', f'@{self.get_label(segment, i)}', 'A=M', 'D=D+A', '@temp', 'M=D'])
-
-                    # pop the stack to D
-                    asm.extend(['@SP', 'A=M-1', 'D=M'])
-
-                    # Opening the address saved in temp and setting D to it
-                    asm.extend(['@temp', 'A=M', 'M=D'])  
-
-                    # Decrement SP
-                    asm.extend(['@SP', 'M=M-1'])
-
+        for instruction in instruction_list:
+            print(instruction)
+            asm.append(f'\n// {instruction}')
+            asm.extend(self.translate_instruction(instruction))
         asm.extend(['(END)', '@END', '0;JMP'])
         return asm
     
 
-
-# cw = CodeWriter()
-# cd = cw.translate([
-#     'push constant 7',
-#     'push constant 8',
-#     'add'
-# ])
-# print('\n'.join(map(str, cd)))
+if __name__ == "__main__":
+    cw = CodeWriter()
+    cd = cw.translate([
+        'push constant 7',
+        'push constant 8',
+        'add'
+    ])
+    print('\n'.join(map(str, cd)))
