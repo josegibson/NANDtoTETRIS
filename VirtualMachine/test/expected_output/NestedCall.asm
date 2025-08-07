@@ -1,8 +1,6 @@
 
 // function Sys.init 0
 (Sys.init)
-@0
-D=A
 
 // push constant 4000
 @4000
@@ -51,7 +49,7 @@ M=D
 M=M-1
 
 // call Sys.main 0
-@RETURN_Sys.main_0
+@RETURN_Sys_0
 D=A
 @SP
 A=M
@@ -100,7 +98,7 @@ D=M
 M=D
 @Sys.main
 0;JMP
-(RETURN_Sys.main_0)
+(RETURN_Sys_0)
 
 // pop temp 1
 @1
@@ -286,7 +284,7 @@ M=D
 M=M+1
 
 // call Sys.add12 1
-@RETURN_Sys.add12_0
+@RETURN_Sys_1
 D=A
 @SP
 A=M
@@ -335,7 +333,7 @@ D=M
 M=D
 @Sys.add12
 0;JMP
-(RETURN_Sys.add12_0)
+(RETURN_Sys_1)
 
 // pop temp 0
 @0
@@ -519,8 +517,6 @@ A=M
 
 // function Sys.add12 0
 (Sys.add12)
-@0
-D=A
 
 // push constant 4002
 @4002
@@ -657,7 +653,4 @@ D=M
 M=D
 @R14
 A=M
-0;JMP
-(END)
-@END
 0;JMP

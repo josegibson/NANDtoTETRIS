@@ -3,7 +3,8 @@ D=A
 @SP
 M=D
 
-// push constant 0
+// function SimpleFunction.test 2
+(SimpleFunction.test)
 @0
 D=A
 @SP
@@ -11,30 +12,16 @@ A=M
 M=D
 @SP
 M=M+1
-
-// pop local 0
-@0
-D=A
-@LCL
-D=D+M
-@R13
-M=D
 @SP
-A=M-1
-D=M
-@R13
 A=M
 M=D
 @SP
-M=M-1
+M=M+1
 
-// label LOOP
-(LOOP)
-
-// push argument 0
+// push local 0
 @0
 D=A
-@ARG
+@LCL
 D=D+M
 A=D
 D=M
@@ -44,8 +31,8 @@ M=D
 @SP
 M=M+1
 
-// push local 0
-@0
+// push local 1
+@1
 D=A
 @LCL
 D=D+M
@@ -67,21 +54,10 @@ M=D+M
 @SP
 M=M+1
 
-// pop local 0
-@0
-D=A
-@LCL
-D=D+M
-@R13
-M=D
+// not
 @SP
 A=M-1
-D=M
-@R13
-A=M
-M=D
-@SP
-M=M-1
+M=!M
 
 // push argument 0
 @0
@@ -96,9 +72,23 @@ M=D
 @SP
 M=M+1
 
-// push constant 1
+// add
+@SP
+AM=M-1
+D=M
+@SP
+AM=M-1
+M=D+M
+@SP
+M=M+1
+
+// push argument 1
 @1
 D=A
+@ARG
+D=D+M
+A=D
+D=M
 @SP
 A=M
 M=D
@@ -115,51 +105,61 @@ M=M-D
 @SP
 M=M+1
 
-// pop argument 0
-@0
-D=A
-@ARG
-D=D+M
-@R13
-M=D
-@SP
-A=M-1
+// return
+@LCL
 D=M
 @R13
-A=M
 M=D
-@SP
-M=M-1
-
-// push argument 0
-@0
+@5
 D=A
-@ARG
-D=D+M
+@R13
+D=M-D
 A=D
 D=M
-@SP
-A=M
+@R14
 M=D
-@SP
-M=M+1
-
-// if-goto LOOP
 @SP
 AM=M-1
 D=M
-@LOOP
-D;JNE
-
-// push local 0
-@0
-D=A
-@LCL
-D=D+M
-A=D
-D=M
-@SP
+@ARG
 A=M
 M=D
+@ARG
+D=M+1
 @SP
-M=M+1
+M=D
+@1
+D=A
+@R13
+D=M-D
+A=D
+D=M
+@THAT
+M=D
+@2
+D=A
+@R13
+D=M-D
+A=D
+D=M
+@THIS
+M=D
+@3
+D=A
+@R13
+D=M-D
+A=D
+D=M
+@ARG
+M=D
+@4
+D=A
+@R13
+D=M-D
+A=D
+D=M
+@LCL
+M=D
+@R14
+A=M
+0;JMP

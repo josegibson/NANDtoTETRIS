@@ -11,12 +11,12 @@ M=M+1
 // pop pointer 0
 @THIS
 D=A
-@temp
+@R13
 M=D
 @SP
 A=M-1
 D=M
-@temp
+@R13
 A=M
 M=D
 @SP
@@ -34,12 +34,12 @@ M=M+1
 // pop pointer 1
 @THAT
 D=A
-@temp
+@R13
 M=D
 @SP
 A=M-1
 D=M
-@temp
+@R13
 A=M
 M=D
 @SP
@@ -58,14 +58,13 @@ M=M+1
 @2
 D=A
 @THIS
-A=M
-D=D+A
-@temp
+D=D+M
+@R13
 M=D
 @SP
 A=M-1
 D=M
-@temp
+@R13
 A=M
 M=D
 @SP
@@ -84,14 +83,13 @@ M=M+1
 @6
 D=A
 @THAT
-A=M
-D=D+A
-@temp
+D=D+M
+@R13
 M=D
 @SP
 A=M-1
 D=M
-@temp
+@R13
 A=M
 M=D
 @SP

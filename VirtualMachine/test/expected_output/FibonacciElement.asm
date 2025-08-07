@@ -1,3 +1,7 @@
+@261
+D=A
+@SP
+M=D
 
 // function Sys.init 0
 (Sys.init)
@@ -12,7 +16,7 @@ M=D
 M=M+1
 
 // call Main.fibonacci 1
-@RETURN_0
+@RETURN_Sys_2
 D=A
 @SP
 A=M
@@ -61,15 +65,12 @@ D=M
 M=D
 @Main.fibonacci
 0;JMP
-(RETURN_0)
+(RETURN_Sys_2)
 
 // label END
 (END)
 
 // goto END
-@END
-0;JMP
-(END)
 @END
 0;JMP
 
@@ -242,7 +243,7 @@ M=M-D
 M=M+1
 
 // call Main.fibonacci 1
-@RETURN_0
+@RETURN_Main_0
 D=A
 @SP
 A=M
@@ -291,7 +292,7 @@ D=M
 M=D
 @Main.fibonacci
 0;JMP
-(RETURN_0)
+(RETURN_Main_0)
 
 // push argument 0
 @0
@@ -326,7 +327,7 @@ M=M-D
 M=M+1
 
 // call Main.fibonacci 1
-@RETURN_1
+@RETURN_Main_1
 D=A
 @SP
 A=M
@@ -375,7 +376,7 @@ D=M
 M=D
 @Main.fibonacci
 0;JMP
-(RETURN_1)
+(RETURN_Main_1)
 
 // add
 @SP
@@ -444,7 +445,4 @@ D=M
 M=D
 @R14
 A=M
-0;JMP
-(END)
-@END
 0;JMP

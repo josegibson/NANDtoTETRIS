@@ -1,3 +1,7 @@
+@261
+D=A
+@SP
+M=D
 
 // push constant 7
 @7
@@ -26,6 +30,3 @@ AM=M-1
 M=D+M
 @SP
 M=M+1
-(END)
-@END
-0;JMP

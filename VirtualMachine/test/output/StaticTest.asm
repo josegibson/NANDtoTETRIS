@@ -1,3 +1,7 @@
+@261
+D=A
+@SP
+M=D
 
 // push constant 111
 @111
@@ -27,51 +31,42 @@ M=D
 M=M+1
 
 // pop static 8
-@8
-D=A
 @StaticTest.8
-A=M
-D=D+A
-@temp
+D=A
+@R13
 M=D
 @SP
 A=M-1
 D=M
-@temp
+@R13
 A=M
 M=D
 @SP
 M=M-1
 
 // pop static 3
-@3
-D=A
 @StaticTest.3
-A=M
-D=D+A
-@temp
+D=A
+@R13
 M=D
 @SP
 A=M-1
 D=M
-@temp
+@R13
 A=M
 M=D
 @SP
 M=M-1
 
 // pop static 1
-@1
-D=A
 @StaticTest.1
-A=M
-D=D+A
-@temp
+D=A
+@R13
 M=D
 @SP
 A=M-1
 D=M
-@temp
+@R13
 A=M
 M=D
 @SP
@@ -81,8 +76,6 @@ M=M-1
 @3
 D=A
 @StaticTest.3
-D=D+M
-A=D
 D=M
 @SP
 A=M
@@ -94,8 +87,6 @@ M=M+1
 @1
 D=A
 @StaticTest.1
-D=D+M
-A=D
 D=M
 @SP
 A=M
@@ -117,8 +108,6 @@ M=M+1
 @8
 D=A
 @StaticTest.8
-D=D+M
-A=D
 D=M
 @SP
 A=M
@@ -135,6 +124,3 @@ AM=M-1
 M=D+M
 @SP
 M=M+1
-(END)
-@END
-0;JMP
