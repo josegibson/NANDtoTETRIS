@@ -3,14 +3,14 @@ import re
 
 class JackTokenizer:
     KEYWORDS = ['class', 'method', 'int', 'false', 'if', 'function', 'static', 'boolean', 'this', 'while', 'constructor', 'field', 'char', 'null', 'else', 'true', 'var', 'void', 'let', 'do', 'return']
-    SYMBOLS = set('{}()[].,;+-*/&|<>=`')
+    SYMBOLS = set('~{}()[].,;+-*/&|<>=`')
 
     def __init__(self, jackcode):
 
         code = re.sub(r"//.*$", "", jackcode, flags=re.MULTILINE)
         code = re.sub(r"/\*\*.*?\*/", "", code, flags=re.DOTALL)
 
-        token_pattern = r"\".*?\"|\d+|[_a-zA-Z]\w*|[{}\(\)\[\].,;+\-*/&|<>=`]"
+        token_pattern = r"\".*?\"|\d+|[_a-zA-Z]\w*|[{}\(\)\[\].,;+\-*/&|<>=~`]"
         self.tokens = re.findall(token_pattern, code)
 
         self.tokenslen = len(self.tokens)
@@ -28,7 +28,12 @@ class JackTokenizer:
         else:
             print(self.tokenslen, self.curr)
             raise KeyError
-    
+        
+    def peek(self):
+        if self.curr + 1 < self.tokenslen:
+            return self.tokens[self.curr + 1]
+        else:
+            raise KeyError    
     def tokenType(self):
         currtoken = self.tokens[self.curr]
 
@@ -46,19 +51,19 @@ class JackTokenizer:
             raise KeyError
         
     def keyword(self):
-        return self.currentToken if self.tokenType == 'KEYWORD' else None
+        return f'<keyword>{self.currentToken()}</keyword>' if self.tokenType() == 'KEYWORD' else None
     
     def symbol(self):
-        return self.currentToken if self.tokenType == 'SYMBOL' else None
+        return f'<symbol>{self.currentToken()}</symbol>' if self.tokenType() == 'SYMBOL' else None
     
     def stringVal(self):
-        return self.currentToken if self.tokenType == 'STRING_CONST' else None
+        return f'<stringConstant>{self.currentToken()}</stringConstant>' if self.tokenType() == 'STRING_CONST' else None
     
     def intVal(self):
-        return self.currentToken if self.tokenType == 'INT_CONST' else None
+        return f'<integerConstant>{self.currentToken()}</integerConstant>' if self.tokenType() == 'INT_CONST' else None
     
     def identifier(self):
-        return self.currentToken if self.tokenType == 'INDENTIFIER' else None
+        return f'<identifier>{self.currentToken()}</identifier>' if self.tokenType() == 'IDENTIFIER' else None
     
 
 
@@ -80,7 +85,7 @@ if __name__ == '__main__':
 
         method void testSymbols() {
             var int a, b;
-            let a = (1 + 2) * 3;
+            let a = (~1 + 2) * 3;
             let b = a - 4 / 5;
             if (a < b & a > 0) {
                 do Output.printInt(a);
