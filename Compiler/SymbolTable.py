@@ -43,13 +43,6 @@ class SymbolTable:
             print(self.subroutine_signatures)
             raise ValueError(f'Subroutine: "{name}" not found in subroutine signatures')
         
-    def getnArgs(self, name):
-        if name in self.subroutine_signatures:
-            return self.subroutine_signatures[name]['nArgs']
-        else:
-            print(self.subroutine_signatures)
-            raise ValueError(f'Subroutine: "{name}" not found in subroutine signatures')
-
     def define(self, name, type, kind):
         entry = {'kind': kind, 'type': type, 'index': None}
 
@@ -102,6 +95,16 @@ class SymbolTable:
             print('Class scope: ', self.class_scope)
             print('Subroutine scope', self.subroutine_scope)
             raise KeyError(f"Variable not found in symbol table: {name}")  
+
+    def kindOfSubroutine(self, mangled_name):
+        '''
+        Returns the subroutine kind out of constructor, method or a function
+        '''
+        if mangled_name in self.subroutine_signatures:
+            return self.subroutine_signatures[mangled_name]['kind']
+        else:
+            print('Subroutine signatures', self.subroutine_signatures)
+            raise KeyError(f"Subroutine not found in symbol table: {mangled_name}")        
 
     def _getBaseLabel(self, labels=None):
         base_label = f"{self.class_name}.{self.subroutine_name}.{self.subroutine_label_counter}"

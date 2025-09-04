@@ -1,6 +1,7 @@
 from JackTokenizer import JackTokenizer
 from VMWritter import VMWriter
 from SymbolTable import SymbolTable
+
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
 import re
@@ -246,6 +247,7 @@ class CompilationEngine:
         1. Converts the token stream into an xml object and returns
         2. Starts symbol table subroutine after function head
         3. Calls vmwriter after compiling varDecs since local variable count is neccesary for vm function command
+        4. If the method happens to be a constructor, pushing the object pointer before return statement is implemented in compileReturn()
         '''
 
         # subroutine Head
@@ -412,6 +414,7 @@ class CompilationEngine:
         self._process_element(do_element, 'KEYWORD', 'do')
         self._compileSubroutineCall(do_element)
         self._process_element(do_element, 'SYMBOL', ';')
+        self.vmWriter.writePop('temp', 0)
         return do_element
    
     def _compileSubroutineCall(self, parent_element):
@@ -430,9 +433,8 @@ class CompilationEngine:
         parent_element.append(expressionList)
         self._process_element(parent_element, 'SYMBOL', ')')
 
-        self.vmWriter.writeCall(subroutine_name, self.symbol_table.getnArgs(subroutine_name))
-        if self.symbol_table.typeOf(subroutine_name) == 'void':
-            self.vmWriter.writePop('temp', 0)
+        subroutineCall_args = [child for child in list(expressionList) if child.tag == 'expression']
+        self.vmWriter.writeCall(subroutine_name, len(subroutineCall_args))
 
     def compileReturn(self):
         return_element = ET.Element('returnStatement')
@@ -502,6 +504,8 @@ class CompilationEngine:
                 self.vmWriter.writeArthmetic('-')
             elif token_value == 'false':
                 self.vmWriter.writePush('constant', '0')
+            elif token_value == 'this':
+                self.vmWriter.writePush('pointer', '0')
             else:
                 raise ValueError('Not setup yet!')
             self._process_element(term_element, 'KEYWORD')
@@ -545,7 +549,7 @@ if __name__ == '__main__':
     # Flag configurations
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', type=str, choices=['vm', 'xml'], default='vm')
-    parser.add_argument('--input', type=str, default='D:\\NANDtoTETRIS\\projects\\11\\Seven\\Main.jack')
+    parser.add_argument('--input', type=str, default='D:\\NANDtoTETRIS\\projects\\11\\Seven')
 
 
     args = parser.parse_args()
