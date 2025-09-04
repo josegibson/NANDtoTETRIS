@@ -1,41 +1,70 @@
 import os
 import glob
-import sys
 
 from JackTokenizer import JackTokenizer
 from CompilationEngine import CompilationEngine
 from VMWritter import VMWriter
-from SymbolTable import SymbolTable
 
 class JackAnalyzer:
     
-    def __init__(self, source, destination=None):
+    def __init__(self, source, destination, mode='vm'):
+
+        self.mode = mode
+        self.destination = destination
+
         self.jackfiles = []
         self.source = source
-        self.destination = destination if destination else self.source
         if os.path.isdir(source):
             self.jackfiles.extend(glob.glob(os.path.join(source, "*.jack")))
         else:
             self.jackfiles.extend([source])
 
-        self.compile()
+        self.analyze()
 
-    def compile(self):
+    def analyze(self):
         for jackfile in self.jackfiles:
-            xmlpath = os.path.join(self.destination, f'{os.path.splitext(os.path.basename(jackfile))[0]}.xml')
-
             with open(jackfile, 'r') as f:
                 jackcode = f.read()
-                jt = JackTokenizer(jackcode)
-                vw = VMWriter()
-                st = SymbolTable()
-                ce = CompilationEngine(jt, vw, xmlpath)
-                ce.run()
+                tokenizer = JackTokenizer(jackcode)
+                vm_writer = VMWriter()
+                compilation_engine = CompilationEngine(tokenizer, vm_writer, self.mode)
 
+                compilation_engine.symbol_table.define_signature('Output.println', 'function', 'void', 1, None)
+                compilation_engine.symbol_table.define_signature('Output.printInt', 'function', 'void', 1, None)
+                compilation_engine.symbol_table.define_signature('Memory.peek', 'function', 'int', 1, None)
+                compilation_engine.symbol_table.define_signature('Memory.poke', 'function', 'void', 2, None)
+                
+                # out is xml or vm based on the mode. print according to the output arg
+                out = compilation_engine.compile()
+
+                path, filename = os.path.split(jackfile)
+                basename, extension = os.path.splitext(filename)
+                outfile = basename + f'.{self.mode}'
+
+                if self.destination == 'stdout':
+                    print('\n', '-'*50, '\n')
+                    print(outfile)
+                    print('\n\t' + out.replace('\n', '\n\t'))
+                    print('\n', '-'*50, '\n')
+                else:
+                    if os.path.isdir(self.destination):
+                        with open(os.path.join(self.destination, outfile)) as f:
+                            f.write(out)
+                    else:
+                        raise ValueError('Destination must be a directory!')
+
+
+
+import argparse
 
 if __name__ == '__main__':
-    output_path = None
-    if len(sys.argv) > 2:
-        output_path = sys.argv[2]
-    ja = JackAnalyzer(sys.argv[1], output_path)
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--input', type=str)
+    parser.add_argument('--output', type=str, default='stdout')
+    parser.add_argument('--mode', type=str, choices=['vm', 'xml'], default='vm')
+    args = parser.parse_args()
+
+
+    jack_analyzer = JackAnalyzer(args.input, args.output, args.mode)
 
