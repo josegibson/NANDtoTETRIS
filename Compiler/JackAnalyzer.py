@@ -7,10 +7,11 @@ from VMWritter import VMWriter
 
 class JackAnalyzer:
     
-    def __init__(self, source, destination, mode='vm'):
+    def __init__(self, source, destination=None, mode='vm', verbose=0):
 
         self.mode = mode
         self.destination = destination
+        self.verbose = verbose
 
         self.jackfiles = []
         self.source = source
@@ -27,31 +28,26 @@ class JackAnalyzer:
                 jackcode = f.read()
                 tokenizer = JackTokenizer(jackcode)
                 vm_writer = VMWriter()
-                compilation_engine = CompilationEngine(tokenizer, vm_writer, self.mode)
+                compilation_engine = CompilationEngine(tokenizer, vm_writer, self.mode, self.verbose)
 
-                # compilation_engine.symbol_table.define_signature('Output.println', 'function', 'void', 1, None)
-                # compilation_engine.symbol_table.define_signature('Output.printInt', 'function', 'void', 1, None)
-                # compilation_engine.symbol_table.define_signature('Memory.peek', 'function', 'int', 1, None)
-                # compilation_engine.symbol_table.define_signature('Memory.poke', 'function', 'void', 2, None)
-                
+                if self.verbose >= 1:
+                    print('-'*88)
+                    print(jackfile)
+                    print()
+
                 # out is xml or vm based on the mode. print according to the output arg
                 out = compilation_engine.compile()
 
-                path, filename = os.path.split(jackfile)
-                basename, extension = os.path.splitext(filename)
-                outfile = basename + f'.{self.mode}'
+                if self.destination:
+                    path, filename = os.path.split(jackfile)
+                    basename, extension = os.path.splitext(filename)
+                    output_filename = basename + f'.{self.mode}'
 
-                if self.destination == 'stdout':
-                    print('\n', '-'*100, '\n')
-                    print(outfile)
-                    print('\n\t' + out.replace('\n', '\n\t'))
-                    print('\n', '-'*100, '\n')
-                else:
                     if os.path.isdir(self.destination):
-                        with open(os.path.join(self.destination, outfile)) as f:
+                        with open(os.path.join(self.destination, output_filename), 'w') as f:
                             f.write(out)
                     else:
-                        raise ValueError('Destination must be a directory!')
+                        raise ValueError('Destination must be stdout or a directory!')
 
 
 
@@ -60,11 +56,36 @@ import argparse
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--input', type=str)
-    parser.add_argument('--output', type=str, default='stdout')
-    parser.add_argument('--mode', type=str, choices=['vm', 'xml'], default='vm')
+    parser.add_argument(
+        'input', 
+        type=str, 
+        help='The input directory or file to process'
+        )
+    
+    parser.add_argument(
+        '--output', 
+        type=str, 
+        default=None,
+        help='An optional string argument that defaults to None'
+        )
+    
+    parser.add_argument(
+        '-m', '--mode', 
+        type=str, 
+        choices=['vm', 'xml'], 
+        default='vm',
+        help='Generates the respective code based on the flag.'
+        )
+    
+    parser.add_argument(
+        '-v', '--verbose',
+        action='count', 
+        default=0,
+        help='Increase output verbosity. Can be used up to three times (-v, -vv, -vvv).'
+        )
+    
     args = parser.parse_args()
 
 
-    jack_analyzer = JackAnalyzer(args.input, args.output, args.mode)
+    jack_analyzer = JackAnalyzer(args.input, args.output, args.mode, args.verbose)
 

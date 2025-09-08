@@ -8,17 +8,18 @@ import re
 
 class CompilationEngine:
 
-    def __init__(self, tokenizer: JackTokenizer, vWriter: VMWriter, mode='vm'):
+    def __init__(self, tokenizer: JackTokenizer, vWriter: VMWriter, mode='vm', verbose=True):
 
         self.mode = mode
+        self.verbose = verbose
 
         self.tokenizer = tokenizer
         self.root = None
         self.vmWriter = vWriter
         self.symbol_table = SymbolTable()
 
-        # a processed buffer can record the processed tokens, this can be usefull for testing
-        self.processed_buffer = []
+        # a buffer to record the processed tokens, this can be useful for testing
+        self.jackcode_buffer = []
 
     @staticmethod
     def comment(funct):
@@ -132,12 +133,11 @@ class CompilationEngine:
     def compile(self):
 
         if self.tokenizer.peekCurrentToken() == 'class':
+
             self._buildSymbolTable()
-
-            print('Class scope', self.symbol_table.class_scope)
-
             self.tokenizer.reset()
             self.root = self.compileClass()
+
         else:
             raise SyntaxError('A Jack file must start with a class declaration.')
         
@@ -182,13 +182,24 @@ class CompilationEngine:
         element = ET.SubElement(parent_element, tags[token_type])
         element.text = f' {token_value.strip('\"')} '
         
-        self.processed_buffer.append(token_value)
+        self.jackcode_buffer.append(token_value)
         self.tokenizer.advance()
 
         return element
 
     def compileClass(self):
         class_element = ET.Element('class')
+
+        # Since the class scope is populated using _buildSymbolTable
+        if self.verbose >= 1:
+            print(f'\t{'-'*80}')
+            print(f'\tClass: {self.symbol_table.class_name}')
+            print()
+            for var, properties in self.symbol_table.class_scope.items():
+                print(f"\t{var:<20}{properties}")
+            for var, properties in self.symbol_table.index_counters.items():
+                print(f"\t{var:<20}{properties}")
+            print()
         
         self._process_element(class_element, 'KEYWORD', 'class')
         self._process_element(class_element, 'IDENTIFIER')
@@ -250,6 +261,8 @@ class CompilationEngine:
         4. If the method happens to be a constructor, pushing the object pointer before return statement is implemented in compileReturn()
         '''
 
+        self.vmWriter.markRecodingStart()
+
         # subroutine Head
         subroutine_element = ET.Element('subroutineDec')
         subroutine_kind = self.tokenizer.peekCurrentToken()
@@ -267,6 +280,9 @@ class CompilationEngine:
         if subroutine_kind == 'constructor':
             self.vmWriter.writePush('constant', self.symbol_table.index_counters['field'])
             self.vmWriter.writeCall('Memory.alloc', 1)
+            self.vmWriter.writePop('pointer', 0)    
+        elif subroutine_kind == 'method':
+            self.vmWriter.writePush('argument', 0)
             self.vmWriter.writePop('pointer', 0)
 
         # subroutine Body
@@ -277,6 +293,21 @@ class CompilationEngine:
         subroutineBody_element.append(self.compileStatements())
         self._process_element(subroutineBody_element, 'SYMBOL', '}')
         subroutine_element.append(subroutineBody_element)
+
+        self.vmWriter.markRecodingStop()
+
+        if self.verbose >= 2:
+            print(f'\t\t{'-'*72}')
+            print(f'\t\tSubroutine: {self.symbol_table.subroutine_name}')
+            print()
+            for var, properties in self.symbol_table.subroutine_scope.items():
+                print(f"\t\t{var:<20}{properties}")
+            print()
+            if self.verbose >= 3:
+                print('\t\t--\n')
+                print('\t\t', end='')
+                print("\n\t\t".join(self.vmWriter.getRecordedBuffer()))
+                print()
 
         return subroutine_element
 
@@ -336,18 +367,33 @@ class CompilationEngine:
         self._process_element(let_element, 'KEYWORD', 'let')
         lvalueName = self.tokenizer.peekCurrentToken()
         self._process_element(let_element, 'IDENTIFIER')
+
+        lvalue_indexing = self.symbol_table.typeOf(lvalueName) == 'Array' and self.tokenizer.peekCurrentToken() == '['
     
-        if self.tokenizer.peekCurrentToken() == '[':
+        if lvalue_indexing:
+
+            seg, idx = self._getSegmentAndIndex(lvalueName)
+            self.vmWriter.writePush(seg, idx)
+
             self._process_element(let_element, 'SYMBOL', '[')
             let_element.append(self.compileExpression())
             self._process_element(let_element, 'SYMBOL', ']')
+
+            self.vmWriter.writeArthmetic('+')
+            self.vmWriter.writePop('temp', 0)
 
         self._process_element(let_element, 'SYMBOL', '=')
         let_element.append(self.compileExpression())
         self._process_element(let_element, 'SYMBOL', ';')
 
-        seg, idx = self._getSegmentAndIndex(lvalueName)
-        self.vmWriter.writePop(seg, idx)
+        if lvalue_indexing:
+            self.vmWriter.writePush('temp', 0)
+            self.vmWriter.writePop('pointer', 0)
+            self.vmWriter.writePop('this', 0)
+
+        else:
+            seg, idx = self._getSegmentAndIndex(lvalueName)
+            self.vmWriter.writePop(seg, idx)
 
         return let_element
 
@@ -418,23 +464,40 @@ class CompilationEngine:
         return do_element
    
     def _compileSubroutineCall(self, parent_element):
-        subroutine_name = ''
+        subroutineName = ''
 
-        subroutine_name += self.tokenizer.peekCurrentToken()
+        className = self.tokenizer.peekCurrentToken()
         self._process_element(parent_element, 'IDENTIFIER')
         if self.tokenizer.peekCurrentToken() == '.':
-            subroutine_name += self.tokenizer.peekCurrentToken()
+            # Implies that this subroutine is an object method
             self._process_element(parent_element, 'SYMBOL', '.')
-            subroutine_name += self.tokenizer.peekCurrentToken()
+            subroutineName = self.tokenizer.peekCurrentToken()
             self._process_element(parent_element, 'IDENTIFIER')
-
+        else:
+            # The function must be defined in the class scope, reassign className to subroutine name
+            subroutineName = className
+            className = self.symbol_table.class_name
+    
         self._process_element(parent_element, 'SYMBOL', '(')
         expressionList = self.compileExpressionList()
         parent_element.append(expressionList)
         self._process_element(parent_element, 'SYMBOL', ')')
 
         subroutineCall_args = [child for child in list(expressionList) if child.tag == 'expression']
-        self.vmWriter.writeCall(subroutine_name, len(subroutineCall_args))
+        nArgs = len(subroutineCall_args)
+
+        # Consulting the symbol table for the class name in case 'className' is an object
+        if className in self.symbol_table:
+            # A method call on an object called className
+            className = self.symbol_table.typeOf(className)
+            
+        if className == self.symbol_table.class_name:
+            # Addressing the first object push
+            self.vmWriter.writePush('pointer', 0)
+            nArgs += 1
+
+        subroutineName = f'{className}.{subroutineName}'
+        self.vmWriter.writeCall(subroutineName, nArgs)
 
     def compileReturn(self):
         return_element = ET.Element('returnStatement')
@@ -481,6 +544,8 @@ class CompilationEngine:
         segment_map = {
             'arg': 'argument',
             'var': 'local',
+            'field': 'this',
+            'static': 'static'
         }
 
         segment = segment_map[self.symbol_table.kindOf(varName)]
@@ -495,7 +560,22 @@ class CompilationEngine:
         token_value = self.tokenizer.peekCurrentToken()
 
         if token_type in ['INT_CONST', 'STRING_CONST']:
-            self.vmWriter.writePush('constant', self.tokenizer.peekCurrentToken())
+            if token_type == 'INT_CONST':
+                self.vmWriter.writePush('constant', self.tokenizer.peekCurrentToken())
+            elif token_type == 'STRING_CONST':
+
+                string = token_value.strip('\"')
+
+                # Creating the string object
+                self.vmWriter.writePush('constant', len(string))
+                self.vmWriter.writeCall('String.new', 1)
+
+                # Adding each character to the string object created
+                for c in string:
+                    self.vmWriter.writePush('constant', ord(c))
+                    self.vmWriter.writeCall('String.appendChar', 2)
+                
+
             self._process_element(term_element, token_type)
         elif token_value in ['true', 'false', 'null', 'this']:
             if token_value == 'true':
@@ -528,13 +608,20 @@ class CompilationEngine:
             else:
                 varName = self.tokenizer.peekCurrentToken()
                 self._process_element(term_element, 'IDENTIFIER') # varName
+
+                segment, index = self._getSegmentAndIndex(varName)
+                self.vmWriter.writePush(segment, index)
+
                 if self.tokenizer.peekCurrentToken() == '[':
+                    # Array
                     self._process_element(term_element, 'SYMBOL', '[')
                     term_element.append(self.compileExpression())
                     self._process_element(term_element, 'SYMBOL', ']')
 
-                segment, index = self._getSegmentAndIndex(varName)
-                self.vmWriter.writePush(segment, index)
+                    self.vmWriter.writeArthmetic('+')
+                    self.vmWriter.writePop('pointer', 1)
+                    self.vmWriter.writePush('that', 0)
+
         else:
             raise SyntaxError(f"Unexpected token in term: {token_value}")
 
@@ -569,11 +656,6 @@ if __name__ == '__main__':
         tokenizer = JackTokenizer(jack_code)
         vm_writer = VMWriter()
         compilation_engine = CompilationEngine(tokenizer, vm_writer)
-
-        compilation_engine.symbol_table.define_signature('Output.println', 'function', 'void', 1, None)
-        compilation_engine.symbol_table.define_signature('Memory.peek', 'function', 'int', 1, None)
-        compilation_engine.symbol_table.define_signature('Memory.poke', 'function', 'void', 2, None)
-        compilation_engine.symbol_table.define_signature('Memory.alloc', 'function', 'int', 1, None)
 
         compilation_engine.compile()
         print("\n".join(vm_writer.vmcode))

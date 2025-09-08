@@ -1,0 +1,195 @@
+function SquareGame.new 0
+push constant 2
+call Memory.alloc 1
+pop pointer 0
+push constant 0
+push constant 0
+push constant 30
+call Square.new 3
+pop this 0
+push constant 0
+pop this 1
+push pointer 0
+return
+function SquareGame.dispose 0
+push argument 0
+pop pointer 0
+call Square.dispose 0
+pop temp 0
+push pointer 0
+call Memory.deAlloc 1
+pop temp 0
+return
+function SquareGame.moveSquare 0
+push argument 0
+pop pointer 0
+push this 1
+push constant 1
+eq
+if-goto SquareGame.moveSquare.0.true
+goto SquareGame.moveSquare.0.false
+label SquareGame.moveSquare.0.true
+call Square.moveUp 0
+pop temp 0
+goto SquareGame.moveSquare.0.end
+label SquareGame.moveSquare.0.false
+label SquareGame.moveSquare.0.end
+push this 1
+push constant 2
+eq
+if-goto SquareGame.moveSquare.1.true
+goto SquareGame.moveSquare.1.false
+label SquareGame.moveSquare.1.true
+call Square.moveDown 0
+pop temp 0
+goto SquareGame.moveSquare.1.end
+label SquareGame.moveSquare.1.false
+label SquareGame.moveSquare.1.end
+push this 1
+push constant 3
+eq
+if-goto SquareGame.moveSquare.2.true
+goto SquareGame.moveSquare.2.false
+label SquareGame.moveSquare.2.true
+call Square.moveLeft 0
+pop temp 0
+goto SquareGame.moveSquare.2.end
+label SquareGame.moveSquare.2.false
+label SquareGame.moveSquare.2.end
+push this 1
+push constant 4
+eq
+if-goto SquareGame.moveSquare.3.true
+goto SquareGame.moveSquare.3.false
+label SquareGame.moveSquare.3.true
+call Square.moveRight 0
+pop temp 0
+goto SquareGame.moveSquare.3.end
+label SquareGame.moveSquare.3.false
+label SquareGame.moveSquare.3.end
+push constant 5
+call Sys.wait 1
+pop temp 0
+return
+function SquareGame.run 2
+push argument 0
+pop pointer 0
+push constant 0
+pop local 1
+label SquareGame.run.0.condition
+push local 1
+not
+if-goto SquareGame.run.0.begin
+goto SquareGame.run.0.end
+label SquareGame.run.0.begin
+label SquareGame.run.1.condition
+push local 0
+push constant 0
+eq
+if-goto SquareGame.run.1.begin
+goto SquareGame.run.1.end
+label SquareGame.run.1.begin
+call Keyboard.keyPressed 0
+pop local 0
+push pointer 0
+call SquareGame.moveSquare 1
+pop temp 0
+goto SquareGame.run.1.condition
+label SquareGame.run.1.end
+push local 0
+push constant 81
+eq
+if-goto SquareGame.run.2.true
+goto SquareGame.run.2.false
+label SquareGame.run.2.true
+push constant 0
+push constant 1
+sub
+pop local 1
+goto SquareGame.run.2.end
+label SquareGame.run.2.false
+label SquareGame.run.2.end
+push local 0
+push constant 90
+eq
+if-goto SquareGame.run.3.true
+goto SquareGame.run.3.false
+label SquareGame.run.3.true
+call Square.decSize 0
+pop temp 0
+goto SquareGame.run.3.end
+label SquareGame.run.3.false
+label SquareGame.run.3.end
+push local 0
+push constant 88
+eq
+if-goto SquareGame.run.4.true
+goto SquareGame.run.4.false
+label SquareGame.run.4.true
+call Square.incSize 0
+pop temp 0
+goto SquareGame.run.4.end
+label SquareGame.run.4.false
+label SquareGame.run.4.end
+push local 0
+push constant 131
+eq
+if-goto SquareGame.run.5.true
+goto SquareGame.run.5.false
+label SquareGame.run.5.true
+push constant 1
+pop this 1
+goto SquareGame.run.5.end
+label SquareGame.run.5.false
+label SquareGame.run.5.end
+push local 0
+push constant 133
+eq
+if-goto SquareGame.run.6.true
+goto SquareGame.run.6.false
+label SquareGame.run.6.true
+push constant 2
+pop this 1
+goto SquareGame.run.6.end
+label SquareGame.run.6.false
+label SquareGame.run.6.end
+push local 0
+push constant 130
+eq
+if-goto SquareGame.run.7.true
+goto SquareGame.run.7.false
+label SquareGame.run.7.true
+push constant 3
+pop this 1
+goto SquareGame.run.7.end
+label SquareGame.run.7.false
+label SquareGame.run.7.end
+push local 0
+push constant 132
+eq
+if-goto SquareGame.run.8.true
+goto SquareGame.run.8.false
+label SquareGame.run.8.true
+push constant 4
+pop this 1
+goto SquareGame.run.8.end
+label SquareGame.run.8.false
+label SquareGame.run.8.end
+label SquareGame.run.9.condition
+push local 0
+push constant 0
+eq
+not
+if-goto SquareGame.run.9.begin
+goto SquareGame.run.9.end
+label SquareGame.run.9.begin
+call Keyboard.keyPressed 0
+pop local 0
+push pointer 0
+call SquareGame.moveSquare 1
+pop temp 0
+goto SquareGame.run.9.condition
+label SquareGame.run.9.end
+goto SquareGame.run.0.condition
+label SquareGame.run.0.end
+return

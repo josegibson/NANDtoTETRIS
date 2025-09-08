@@ -1,6 +1,18 @@
 class VMWriter:
     def __init__(self, vm_out_path=None):
         self.vmcode = []
+
+        self.startMarker = None
+        self.stopMarker = None
+    
+    def markRecodingStart(self):
+        self.startMarker = len(self.vmcode)
+
+    def markRecodingStop(self):
+        self.stopMarker = len(self.vmcode)
+
+    def getRecordedBuffer(self):
+        return self.vmcode[self.startMarker: self.stopMarker + 1]
     
     def writeComment(self, comment, begin='\n', end = ''):
         self.vmcode.append(f"{begin}// {comment} {end}")
