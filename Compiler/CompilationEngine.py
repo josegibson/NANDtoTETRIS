@@ -166,19 +166,19 @@ class CompilationEngine:
         if expected_type:
             if isinstance(expected_type, list):
                 if token_type not in expected_type:
-                    raise SyntaxError(f"Expected on of token type {expected_type} but got {token_type} in parent element: {parent_element.tag}\t\t '{token_value}' != '{expected_value}'")
+                    raise SyntaxError(f"Expected one of token type {expected_type} but got {token_type} in parent element: {parent_element.tag}\t\t '{token_value}' != '{expected_value}'\n{self.tokenizer.context()}")
             else:
                 if token_type != expected_type:
-                    raise SyntaxError(f"Expected token type {expected_type} but got {token_type} in parent element: {parent_element.tag}\t\t '{token_value}' != '{expected_value}'")
+                    raise SyntaxError(f"Expected token type {expected_type} but got {token_type} in parent element: {parent_element.tag}\t\t '{token_value}' != '{expected_value}'\n{self.tokenizer.context()}")
             
                 
         if expected_value:
             if isinstance(expected_value, list):
                 if token_value not in expected_value:
-                    raise SyntaxError(f"Expected on of token value '{expected_value}' but got '{token_value}' in parent element: {parent_element.tag}")
+                    raise SyntaxError(f"Expected one of token value '{expected_value}' but got '{token_value}' in parent element: {parent_element.tag}\n{self.tokenizer.context()}")
             else:
                 if token_value != expected_value:
-                    raise SyntaxError(f"Expected token value {expected_value} but got {token_value} in parent element: {parent_element.tag}")
+                    raise SyntaxError(f"Expected token value {expected_value} but got {token_value} in parent element: {parent_element.tag}\n{self.tokenizer.context()}")
                 
         
 
@@ -643,7 +643,7 @@ class CompilationEngine:
                     self.vmWriter.writePush('that', 0)
 
         else:
-            raise SyntaxError(f"Unexpected token in term: {token_value}")
+            raise SyntaxError(f"Unexpected token in term: {token_value}\n{self.tokenizer.context()}")
 
         return term_element
 

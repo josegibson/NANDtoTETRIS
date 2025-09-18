@@ -25,6 +25,9 @@ class JackTokenizer:
     def advance(self):
         self.curr += 1
 
+    def context(self, n = 5):
+        return self.tokens[self.curr - n : self.curr + n]
+
     def peekCurrentToken(self):
         if self.hasMoreTokens():
             return self.tokens[self.curr]
