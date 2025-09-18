@@ -18,19 +18,20 @@ class CodeWriter():
         res = []
 
         if op == 'neg':
-            res.extend(['@SP', 'A=M', 'M=-M'])
+            res.extend(['@SP', 'A=M-1', 'M=-M'])
         elif op == 'not':
-            res.extend(['@SP', 'A=M', 'M=!M'])
+            res.extend(['@SP', 'A=M-1', 'M=!M'])
         else:
-            res.extend(['@SP', 'A=M', 'D=M', '@SP', 'M=M-1', 'A=M'])
+            # op2 in D, op1 in M
+            res.extend(['@SP', 'AM=M-1', 'D=M', '@SP', 'AM=M-1'])
             if op == 'add':
                 res.append('M=D+M')
             elif op == 'sub':
                 res.append('M=M-D')
             elif op == 'and':
-                res.append('M=M&D')
+                res.append('M=D&M')
             elif op == 'or':
-                res.append('M=M|D')
+                res.append('M=D|M')
             else:
                 res.extend(['M=M-D', 'D=M'])
 
@@ -42,11 +43,11 @@ class CodeWriter():
                     res.extend([f'@TRUE_{self.label_id}', 'D;JLT'])
                 
                 # Setup TRUE, FALSE and CONTINUE labels
-                res.extend(['M=0', f'@END_{self.label_id}', '0;JMP'])
+                res.extend(['@SP', 'A=M', 'M=0', f'@END_{self.label_id}', '0;JMP'])
                 res.extend([f'(TRUE_{self.label_id})', '@SP', 'A=M', 'M=-1'])
                 res.extend([f'(END_{self.label_id})'])
                 self.label_id += 1
-                    
+            res.extend(['@SP', 'M=M+1'])        
         return res
 
     def translate(self, codelist):
