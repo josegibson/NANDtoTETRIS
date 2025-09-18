@@ -2,25 +2,20 @@
 
 class CodeWriter():
     def __init__(self):
-        pass
+        self.label_id = 0
 
     def get_label(self, segment_id):
         if segment_id == 'local':
             return 'LCL'
         elif segment_id == 'argument':
             return 'ARG'
+        elif segment_id == 'this':
+            return 'THIS'
+        elif segment_id == 'that':
+            return 'THAT'
         
-    def operation_commands(self, op):
+    def get_operation_commands(self, op):
         res = []
-
-        if op == 'add':
-            res.extend(['@SP', 'A=M', 'D=M', '@SP', 'M=M-1', 'A=M', 'M=M+D'])
-        elif op == 'sub':
-            res.extend(['@SP', 'A=M', 'D=M', '@SP', 'M=M-1', 'A=M', 'M=M-D'])
-        elif op == 'neg':
-            res.extend(['@SP', 'A=M', 'M=-M'])
-        elif op == 'and':
-            res.extend(['@SP', 'A=M', 'D=M', '@SP', 'M=M-1', 'A=M', 'M=M-D'])
 
         if op == 'neg':
             res.extend(['@SP', 'A=M', 'M=-M'])
@@ -29,30 +24,35 @@ class CodeWriter():
         else:
             res.extend(['@SP', 'A=M', 'D=M', '@SP', 'M=M-1', 'A=M'])
             if op == 'add':
-                res.append(['M=M+D'])
+                res.append('M=D+M')
             elif op == 'sub':
-                res.append(['M=M-D'])
+                res.append('M=M-D')
             elif op == 'and':
-                res.append(['M=M&D'])
+                res.append('M=M&D')
             elif op == 'or':
-                res.append(['M=M|D'])
+                res.append('M=M|D')
             else:
                 res.extend(['M=M-D', 'D=M'])
 
-                # Setup TRUE and FALSE labels
-                res.extend(['(TRUE)', '@SP', 'A=M', 'M='])
-
                 if op == 'eq':
-
-
-
-
-
+                    res.extend([f'@TRUE_{self.label_id}', 'D;JEQ'])
+                elif op == 'gt':
+                    res.extend([f'@TRUE_{self.label_id}', 'D;JGT'])
+                elif op == 'lt':
+                    res.extend([f'@TRUE_{self.label_id}', 'D;JLT'])
+                
+                # Setup TRUE, FALSE and CONTINUE labels
+                res.extend(['M=0', f'@END_{self.label_id}', '0;JMP'])
+                res.extend([f'(TRUE_{self.label_id})', '@SP', 'A=M', 'M=-1'])
+                res.extend([f'(END_{self.label_id})'])
+                self.label_id += 1
+                    
         return res
 
     def translate(self, codelist):
         asm = []
         for code in codelist:
+            asm.append(f'\n// {code}')
             code = code.split()
             if len(code) == 1:
                 asm.extend(self.get_operation_commands(code[0]))
@@ -85,6 +85,15 @@ class CodeWriter():
                     # Decrement SP
                     asm.extend(['@SP', 'M=M-1'])
 
+        asm.extend(['(END)', '@END', '0;JMP'])
+        return asm
+    
 
 
-
+# cw = CodeWriter()
+# cd = cw.translate([
+#     'push constant 7',
+#     'push constant 8',
+#     'add'
+# ])
+# print('\n'.join(map(str, cd)))
