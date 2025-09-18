@@ -1,3 +1,10 @@
-**/__pycache/
+
+
+projects/
+tools/
+
+.vscode
+**/.pytest_cache
+**/__pycache__/
 **/*.pyc
-.vscode/
+**/test/
