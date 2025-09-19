@@ -39,6 +39,8 @@ class VMTranslator:
                 else:
                     final_asmcode.extend(asmcode)
 
+        # Prepend the bootstrap code such as setting SP and the initial frame
+        final_asmcode = codew.get_bootstrap() + final_asmcode
         
         final_asmcode = '\n'.join(final_asmcode)
 
