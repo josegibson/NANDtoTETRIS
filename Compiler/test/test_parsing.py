@@ -6,7 +6,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 from JackAnalyzer import JackAnalyzer
 
 
-project_path = 'D:\\NANDtoTETRIS\\projects\\11'
+project_path = 'D:\\NANDtoTETRIS\\projects\\10'
 test_path = os.path.join(os.path.dirname(__file__), 'outputs')
 @pytest.mark.parametrize("testname", os.listdir(project_path))
 def test_compiler(testname):
