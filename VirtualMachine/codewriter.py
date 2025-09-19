@@ -191,11 +191,11 @@ class CodeWriter():
         return asm
     
 
-
-# cw = CodeWriter()
-# cd = cw.translate([
-#     'push constant 7',
-#     'push constant 8',
-#     'add'
-# ])
-# print('\n'.join(map(str, cd)))
+if __name__ == "__main__":
+    cw = CodeWriter()
+    cd = cw.translate([
+        'push constant 7',
+        'push constant 8',
+        'add'
+    ])
+    print('\n'.join(map(str, cd)))
