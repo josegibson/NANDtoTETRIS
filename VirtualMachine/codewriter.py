@@ -1,7 +1,7 @@
 
 
 class CodeWriter():
-    def __init__(self, filename):
+    def __init__(self, filename=None):
         self.label_id = 0
         self.filename = filename
 
@@ -199,20 +199,27 @@ class CodeWriter():
         else:
             raise KeyError(f'Command not configured: {instruction}')
 
-    def translate(self, instruction_list):
+    def translate(self, instruction_list, filename=None):
+        if not filename is None:
+            self.filename = filename
         asm = []
 
         for instruction in instruction_list:
-            print(instruction)
+            # print(instruction)
             asm.append(f'\n// {instruction}')
             asm.extend(self.translate_instruction(instruction))
-
-        asm.extend(['(END)', '@END', '0;JMP'])
+        # asm.extend(['(END)', '@END', '0;JMP'])
         return asm
     
+    def get_bootstrap(self):
+        bootstrap = []
+        bootstrap.extend(['@256', 'D=A', '@SP', 'M=D'])
+
+        return bootstrap
+
 
 if __name__ == "__main__":
-    cw = CodeWriter()
+    cw = CodeWriter("Main.main")
     cd = cw.translate([
         'push constant 7',
         'push constant 8',
