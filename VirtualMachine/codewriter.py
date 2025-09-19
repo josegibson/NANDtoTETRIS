@@ -157,14 +157,33 @@ class CodeWriter():
             # Restore the frame
             # exepcted return value at *ARG
 
-            # SP = LCL
-            # ARG = *SP - 4
-            # LCL = *SP - 3
-            # THIS = *SP - 2
-            # THAT = *SP - 1
-            # SP = SP - 5
-            pass
-        
+            # frame = LCL
+            res.extend(['@LCL', 'D=M', '@R13', 'M=D'])
+
+            # ret = *(frame - 5)
+            res.extend(['@5', 'D=A', '@R13', 'D=M-D', 'A=D', 'D=M', '@R14', 'M=D'])
+
+            # *ARG = pop()
+            res.extend(['@SP', 'AM=M-1', 'D=M', '@ARG', 'A=M', 'M=D'])
+
+            # SP = ARG + 1
+            res.extend(['@ARG', 'D=M+1', '@SP', 'M=D'])
+
+            # THAT  = *(frame - 1)
+            res.extend(['@1', 'D=A', '@R13', 'D=M-D', 'A=D', 'D=M', '@THAT', 'M=D'])
+
+            # THIS  = *(frame - 2)
+            res.extend(['@2', 'D=A', '@R13', 'D=M-D', 'A=D', 'D=M', '@THIS', 'M=D'])
+
+            # ARG = *(frame - 3)
+            res.extend(['@3', 'D=A', '@R13', 'D=M-D', 'A=D', 'D=M', '@ARG', 'M=D'])
+
+            # LCL = *(frame - 4)
+            res.extend(['@4', 'D=A', '@R13', 'D=M-D', 'A=D', 'D=M', '@LCL', 'M=D'])
+
+            # goto ret
+            res.extend(['@R14', 'A=M', '0;JMP'])
+
         return res
     
     def translate_instruction(self, instruction):
