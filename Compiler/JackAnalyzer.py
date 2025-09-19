@@ -42,10 +42,10 @@ class JackAnalyzer:
                 outfile = basename + f'.{self.mode}'
 
                 if self.destination == 'stdout':
-                    print('\n', '-'*50, '\n')
+                    print('\n', '-'*100, '\n')
                     print(outfile)
                     print('\n\t' + out.replace('\n', '\n\t'))
-                    print('\n', '-'*50, '\n')
+                    print('\n', '-'*100, '\n')
                 else:
                     if os.path.isdir(self.destination):
                         with open(os.path.join(self.destination, outfile)) as f:

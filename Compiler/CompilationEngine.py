@@ -247,6 +247,7 @@ class CompilationEngine:
         1. Converts the token stream into an xml object and returns
         2. Starts symbol table subroutine after function head
         3. Calls vmwriter after compiling varDecs since local variable count is neccesary for vm function command
+        4. If the method happens to be a constructor, pushing the object pointer before return statement is implemented in compileReturn()
         '''
 
         # subroutine Head
@@ -503,6 +504,8 @@ class CompilationEngine:
                 self.vmWriter.writeArthmetic('-')
             elif token_value == 'false':
                 self.vmWriter.writePush('constant', '0')
+            elif token_value == 'this':
+                self.vmWriter.writePush('pointer', '0')
             else:
                 raise ValueError('Not setup yet!')
             self._process_element(term_element, 'KEYWORD')
@@ -546,7 +549,7 @@ if __name__ == '__main__':
     # Flag configurations
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', type=str, choices=['vm', 'xml'], default='vm')
-    parser.add_argument('--input', type=str, default='D:\\NANDtoTETRIS\\projects\\11\\Seven\\Main.jack')
+    parser.add_argument('--input', type=str, default='D:\\NANDtoTETRIS\\projects\\11\\Seven')
 
 
     args = parser.parse_args()
