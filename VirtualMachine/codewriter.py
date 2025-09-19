@@ -4,12 +4,6 @@ class CodeWriter():
     def __init__(self, filename):
         self.label_id = 0
         self.filename = filename
-        # function : nLocalVars
-        self.function_map = {}
-        # function : seed
-        self.function_seed = {}
-
-    def get_label(self, segment_id, i):
 
         self.label = {
             'local': 'LCL',
@@ -20,6 +14,11 @@ class CodeWriter():
             ('pointer', '1'): 'THAT',
             'temp': '5' 
         }
+
+        # function : seed
+        self.function_seed = 0
+
+    def _get_label(self, segment_id, i):
         
         if segment_id == 'static':
             return f"{self.filename}.{i}"
@@ -51,16 +50,16 @@ class CodeWriter():
                 res.extend(['D=M-D'])
 
                 if op == 'eq':
-                    res.extend([f'@TRUE_{self.label_id}', 'D;JEQ'])
+                    res.extend([f'@{self.filename}_TRUE_{self.label_id}', 'D;JEQ'])
                 elif op == 'gt':
-                    res.extend([f'@TRUE_{self.label_id}', 'D;JGT'])
+                    res.extend([f'@{self.filename}_TRUE_{self.label_id}', 'D;JGT'])
                 elif op == 'lt':
-                    res.extend([f'@TRUE_{self.label_id}', 'D;JLT'])
+                    res.extend([f'@{self.filename}_TRUE_{self.label_id}', 'D;JLT'])
                 
                 # Setup TRUE, FALSE and CONTINUE labels
-                res.extend(['@SP', 'A=M', 'M=0', f'@END_{self.label_id}', '0;JMP'])
-                res.extend([f'(TRUE_{self.label_id})', '@SP', 'A=M', 'M=-1'])
-                res.extend([f'(END_{self.label_id})'])
+                res.extend(['@SP', 'A=M', 'M=0', f'@{self.filename}_END_{self.label_id}', '0;JMP'])
+                res.extend([f'({self.filename}_TRUE_{self.label_id})', '@SP', 'A=M', 'M=-1'])
+                res.extend([f'({self.filename}_END_{self.label_id})'])
                 self.label_id += 1
             res.extend(['@SP', 'M=M+1'])        
         return res
@@ -128,7 +127,8 @@ class CodeWriter():
 
         elif instruction[0] == 'call':
             # Create a label for the return address
-            retAddr = "something for now"
+            retAddr = f'RETURN_{self.filename}_{self.function_seed}'
+            self.function_seed += 1
 
 
             # Save the current frame
