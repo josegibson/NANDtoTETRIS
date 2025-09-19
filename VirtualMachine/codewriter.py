@@ -24,15 +24,6 @@ class CodeWriter():
         else:
             return self.label[segment_id]
         
-    def is_branching_cmd(self, cmd):
-        return cmd in ['label', 'if-goto']
-        
-    def is_memory_cmd(self, cmd):
-        return cmd in ['push', 'pop']
-
-    def is_arthmetic_cmd(self, cmd):
-        return cmd in ['neg', 'not', 'add', 'sub', 'and', 'or', 'eq', 'gt', 'lt']
-        
     def translate_arthmetic_commands(self, op):
         res = []
 
@@ -104,18 +95,27 @@ class CodeWriter():
             res.extend(['@SP', 'M=M-1'])
 
         return res
+    
+    def translate_instruction(self, instruction):
+        instruction = instruction.split()
+        if instruction[0] in ['label', 'if-goto', 'goto']:
+            pass
+        elif instruction[0] in ['push', 'pop']:
+            return self._translate_memory_commands(instruction)
+        elif instruction[0] in ['neg', 'not', 'add', 'sub', 'and', 'or', 'eq', 'gt', 'lt']:
+            return self.translate_arthmetic_commands(instruction)
+        elif instruction[0] in ['function', 'call', 'return']:
+            pass
+        else:
+            raise KeyError(f'Command not configured: {instruction}')
 
-    def translate(self, codelist):
+    def translate(self, instruction_list):
         asm = []
-        for code in codelist:
-            asm.append(f'\n// {code}')
-            code = code.split()
-            if self.is_arthmetic_cmd(code[0]):
-                asm.extend(self.translate_arthmetic_commands(code[0]))
-            elif self.is_branching_cmd(code[0]):
-                pass 
-            elif self.is_memory_cmd(code[0]):
-                asm.extend(self._translate_memory_commands(code[0]))
+        
+        for instruction in instruction_list:
+            print(instruction)
+            asm.append(f'\n// {instruction}')
+            asm.extend(self.translate_instruction(instruction))
 
         asm.extend(['(END)', '@END', '0;JMP'])
         return asm
