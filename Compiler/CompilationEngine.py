@@ -413,6 +413,7 @@ class CompilationEngine:
         self._process_element(do_element, 'KEYWORD', 'do')
         self._compileSubroutineCall(do_element)
         self._process_element(do_element, 'SYMBOL', ';')
+        self.vmWriter.writePop('temp', 0)
         return do_element
    
     def _compileSubroutineCall(self, parent_element):
