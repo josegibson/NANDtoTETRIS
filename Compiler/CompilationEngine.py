@@ -1,6 +1,7 @@
 from JackTokenizer import JackTokenizer
 from VMWritter import VMWriter
 from SymbolTable import SymbolTable
+
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
 import re
@@ -430,9 +431,8 @@ class CompilationEngine:
         parent_element.append(expressionList)
         self._process_element(parent_element, 'SYMBOL', ')')
 
-        self.vmWriter.writeCall(subroutine_name, self.symbol_table.getnArgs(subroutine_name))
-        if self.symbol_table.typeOf(subroutine_name) == 'void':
-            self.vmWriter.writePop('temp', 0)
+        subroutineCall_args = [child for child in list(expressionList) if child.tag == 'expression']
+        self.vmWriter.writeCall(subroutine_name, len(subroutineCall_args))
 
     def compileReturn(self):
         return_element = ET.Element('returnStatement')

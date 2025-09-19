@@ -43,13 +43,6 @@ class SymbolTable:
             print(self.subroutine_signatures)
             raise ValueError(f'Subroutine: "{name}" not found in subroutine signatures')
         
-    def getnArgs(self, name):
-        if name in self.subroutine_signatures:
-            return self.subroutine_signatures[name]['nArgs']
-        else:
-            print(self.subroutine_signatures)
-            raise ValueError(f'Subroutine: "{name}" not found in subroutine signatures')
-
     def define(self, name, type, kind):
         entry = {'kind': kind, 'type': type, 'index': None}
 

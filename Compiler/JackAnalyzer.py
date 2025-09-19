@@ -29,10 +29,10 @@ class JackAnalyzer:
                 vm_writer = VMWriter()
                 compilation_engine = CompilationEngine(tokenizer, vm_writer, self.mode)
 
-                compilation_engine.symbol_table.define_signature('Output.println', 'function', 'void', 1, None)
-                compilation_engine.symbol_table.define_signature('Output.printInt', 'function', 'void', 1, None)
-                compilation_engine.symbol_table.define_signature('Memory.peek', 'function', 'int', 1, None)
-                compilation_engine.symbol_table.define_signature('Memory.poke', 'function', 'void', 2, None)
+                # compilation_engine.symbol_table.define_signature('Output.println', 'function', 'void', 1, None)
+                # compilation_engine.symbol_table.define_signature('Output.printInt', 'function', 'void', 1, None)
+                # compilation_engine.symbol_table.define_signature('Memory.peek', 'function', 'int', 1, None)
+                # compilation_engine.symbol_table.define_signature('Memory.poke', 'function', 'void', 2, None)
                 
                 # out is xml or vm based on the mode. print according to the output arg
                 out = compilation_engine.compile()
