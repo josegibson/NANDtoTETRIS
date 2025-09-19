@@ -7,17 +7,32 @@ import re
 
 class CompilationEngine:
 
-    tags = {
-        'STRING_CONST': 'stringConstant',
-        'INT_CONST': 'integerConstant',
-        'KEYWORD': 'keyword',
-        'SYMBOL': 'symbol',
-        'IDENTIFIER': 'identifier',
-    }
+    def __init__(self, tokenizer: JackTokenizer, vWriter: VMWriter, mode='vm'):
 
-    def __init__(self, tokenizer: JackTokenizer, vWriter: VMWriter, outfile=None):
+        self.mode = mode
+
         self.tokenizer = tokenizer
         self.root = None
+        self.vmWriter = vWriter
+        self.symbol_table = SymbolTable()
+
+        # a processed buffer can record the processed tokens, this can be usefull for testing
+        self.processed_buffer = []
+
+    @staticmethod
+    def comment(funct):
+        def wrapped(self, *args,**kwargs):
+            self.vmWriter.writeComment('')
+            self.processed_buffer.clear()
+
+            result = funct(self, *args, **kwargs)
+
+            self.vmWriter.writeComment(" ".join(self.processed_buffer), begin='', end='\n')
+            self.processed_buffer.clear()
+
+            return result
+
+        return wrapped
 
     def _buildSymbolTable(self):
         
@@ -100,11 +115,19 @@ class CompilationEngine:
                 self.symbol_table.define_signature(f"{self.symbol_table.class_name}.{subroutine_name}", subroutine_kind, subroutine_type, nArgs, nLocals)
 
             self.tokenizer.advance()
+
+    def _pretty_xml(self):
         rough_string = ET.tostring(self.root, 'utf-8')
         reparsed = minidom.parseString(rough_string)
         pretty_xml_string = reparsed.documentElement.toprettyxml(indent="  ")
         # Use this in your re.sub() call
         pretty_xml_string = re.sub(r'\n[ \t]*<!-- -->', '', pretty_xml_string)
+
+        return pretty_xml_string
+
+    def _pretty_vmcode(self):
+        return "\n".join(self.vmWriter.vmcode)
+
     def compile(self):
 
         if self.tokenizer.peekCurrentToken() == 'class':
@@ -125,8 +148,16 @@ class CompilationEngine:
 
     def _process_element(self, parent_element: ET.Element, expected_type=None, expected_value=None):
         
-        token_type = self.tokenizer.tokenType()
-        token_value = self.tokenizer.currentToken()
+        tags = {
+            'STRING_CONST': 'stringConstant',
+            'INT_CONST': 'integerConstant',
+            'KEYWORD': 'keyword',
+            'SYMBOL': 'symbol',
+            'IDENTIFIER': 'identifier',
+        }
+
+        token_type = self.tokenizer.getCurrentTokenType()
+        token_value = self.tokenizer.peekCurrentToken()
 
         if expected_type:
             if isinstance(expected_type, list):
@@ -147,9 +178,10 @@ class CompilationEngine:
                 
         
 
-        element = ET.SubElement(parent_element, self.tags[token_type])
+        element = ET.SubElement(parent_element, tags[token_type])
         element.text = f' {token_value.strip('\"')} '
         
+        self.processed_buffer.append(token_value)
         self.tokenizer.advance()
 
         return element
@@ -158,33 +190,28 @@ class CompilationEngine:
         class_element = ET.Element('class')
         
         self._process_element(class_element, 'KEYWORD', 'class')
-        class_name = self.tokenizer.currentToken()
-        print(f'Setting class name: {self.vw.class_name}')
         self._process_element(class_element, 'IDENTIFIER')
         self._process_element(class_element, 'SYMBOL', '{')
 
-        while self.tokenizer.currentToken() in ['static', 'field', 'constructor', 'method', 'function']:
+        while self.tokenizer.peekCurrentToken() in ['static', 'field', 'constructor', 'method', 'function']:
 
-            if self.tokenizer.currentToken() in ['static', 'field']:
+            if self.tokenizer.peekCurrentToken() in ['static', 'field']:
                 class_element.append(self.compileClassVarDec())
 
-            if self.tokenizer.currentToken() in ['constructor', 'method', 'function']:
+            if self.tokenizer.peekCurrentToken() in ['constructor', 'method', 'function']:
                 class_element.append(self.compileSubroutine())
 
         self._process_element(class_element, 'SYMBOL', '}')
 
-        # Actual compilation
-        self.st = SymbolTable(class_name)
-
         return class_element
-    
+
     def compileClassVarDec(self):
         classVarDec_element = ET.Element('classVarDec')
 
         self._process_element(classVarDec_element, 'KEYWORD', ['static', 'field'])
         self._process_element(classVarDec_element, ['KEYWORD', 'IDENTIFIER'])
         self._process_element(classVarDec_element,'IDENTIFIER')
-        while self.tokenizer.currentToken() == ',':
+        while self.tokenizer.peekCurrentToken() == ',':
             self._process_element(classVarDec_element,'SYMBOL', ',')
             self._process_element(classVarDec_element,'IDENTIFIER')
 
@@ -195,12 +222,16 @@ class CompilationEngine:
     def compileParameterList(self):
         parameterList_element = ET.Element('parameterList')
 
-        while self.tokenizer.currentToken() != ')':
+        while self.tokenizer.peekCurrentToken() != ')':
 
-            if(self.tokenizer.currentToken() == ','):
+            if(self.tokenizer.peekCurrentToken() == ','):
                 self._process_element(parameterList_element, 'SYMBOL', ',')
+            argType = self.tokenizer.peekCurrentToken()
             self._process_element(parameterList_element, ['KEYWORD', 'IDENTIFIER'])
+            argName = self.tokenizer.peekCurrentToken()
             self._process_element(parameterList_element, 'IDENTIFIER')
+
+            self.symbol_table.define(argName, argType, 'arg')
         
         # If the element has no children, give it empty text to prevent self-closing.
         if not list(parameterList_element):
@@ -210,44 +241,62 @@ class CompilationEngine:
         return parameterList_element
 
     def compileSubroutine(self):
-        subroutine_element = ET.Element('subroutineDec')
+        # Maybe add the grammar above each for proper documentation!
+        '''
+        1. Converts the token stream into an xml object and returns
+        2. Starts symbol table subroutine after function head
+        3. Calls vmwriter after compiling varDecs since local variable count is neccesary for vm function command
+        '''
 
+        # subroutine Head
+        subroutine_element = ET.Element('subroutineDec')
+        subroutine_kind = self.tokenizer.peekCurrentToken()
         self._process_element(subroutine_element, 'KEYWORD', ['constructor', 'function', 'method'])
         self._process_element(subroutine_element, ['KEYWORD', 'IDENTIFIER'])    # type (buildin or user defined)
-        subroutine_name = self.tokenizer.currentToken()
+        name = self.tokenizer.peekCurrentToken()
+        self.symbol_table.startSubroutine(name)
         self._process_element(subroutine_element, 'IDENTIFIER')                 #subroutineName
         self._process_element(subroutine_element, 'SYMBOL', '(')
         subroutine_element.append(self.compileParameterList())
         self._process_element(subroutine_element, 'SYMBOL', ')')
 
-        # subroutineBody
+        mangled_subroutine_name = f"{self.symbol_table.class_name}.{name}"
+        self.vmWriter.writeFunction(mangled_subroutine_name, self.symbol_table.getnLocals(mangled_subroutine_name))
+        if subroutine_kind == 'constructor':
+            self.vmWriter.writePush('constant', self.symbol_table.index_counters['field'])
+            self.vmWriter.writeCall('Memory.alloc', 1)
+            self.vmWriter.writePop('pointer', 0)
+
+        # subroutine Body
         subroutineBody_element = ET.Element('subroutineBody')
-        
         self._process_element(subroutineBody_element, 'SYMBOL', '{')
-        while self.tokenizer.currentToken() == 'var':
+        while self.tokenizer.peekCurrentToken() == 'var':
             subroutineBody_element.append(self.compileVarDec())
         subroutineBody_element.append(self.compileStatements())
         self._process_element(subroutineBody_element, 'SYMBOL', '}')
-
         subroutine_element.append(subroutineBody_element)
 
-
-        # Actual Compilation
-        self.vw.subroutineST = SymbolTable(subroutine_name)
-
         return subroutine_element
-    
+
     def compileVarDec(self):
         varDec_element = ET.Element('varDec')
 
+        varKind = self.tokenizer.peekCurrentToken()
         self._process_element(varDec_element, 'KEYWORD', 'var')
+        varType = self.tokenizer.peekCurrentToken()
         self._process_element(varDec_element, ['KEYWORD', 'IDENTIFIER'])
+        varName = self.tokenizer.peekCurrentToken()
         self._process_element(varDec_element, 'IDENTIFIER')
 
-        while self.tokenizer.currentToken() != ';':
-            self._process_element(varDec_element, 'SYMBOL', ',')
+        self.symbol_table.define(varName, varType, varKind)
 
+        while self.tokenizer.peekCurrentToken() != ';':
+            self._process_element(varDec_element, 'SYMBOL', ',')
+            varName = self.tokenizer.peekCurrentToken()
             self._process_element(varDec_element, 'IDENTIFIER')
+
+            self.symbol_table.define(varName, varType, varKind)
+
         self._process_element(varDec_element, 'SYMBOL', ';')
 
         return varDec_element
@@ -255,21 +304,21 @@ class CompilationEngine:
     def compileStatements(self):
         statements_element = ET.Element('statements')
 
-        while self.tokenizer.currentToken() in ['let', 'if', 'while', 'do', 'return']:
+        while self.tokenizer.peekCurrentToken() in ['let', 'if', 'while', 'do', 'return']:
 
-            if self.tokenizer.currentToken() == 'let':
+            if self.tokenizer.peekCurrentToken() == 'let':
                 statements_element.append(self.compileLet())
 
-            elif self.tokenizer.currentToken() == 'if':
+            elif self.tokenizer.peekCurrentToken() == 'if':
                 statements_element.append(self.compileIf())
 
-            elif self.tokenizer.currentToken() == 'while':
+            elif self.tokenizer.peekCurrentToken() == 'while':
                 statements_element.append(self.compileWhile())
 
-            elif self.tokenizer.currentToken() == 'do':
+            elif self.tokenizer.peekCurrentToken() == 'do':
                 statements_element.append(self.compileDo())
 
-            elif self.tokenizer.currentToken() == 'return':
+            elif self.tokenizer.peekCurrentToken() == 'return':
                 statements_element.append(self.compileReturn())
 
                 # If the element has no children, give it empty text to prevent self-closing.
@@ -283,9 +332,10 @@ class CompilationEngine:
         let_element = ET.Element('letStatement')
 
         self._process_element(let_element, 'KEYWORD', 'let')
+        lvalueName = self.tokenizer.peekCurrentToken()
         self._process_element(let_element, 'IDENTIFIER')
     
-        if self.tokenizer.currentToken() == '[':
+        if self.tokenizer.peekCurrentToken() == '[':
             self._process_element(let_element, 'SYMBOL', '[')
             let_element.append(self.compileExpression())
             self._process_element(let_element, 'SYMBOL', ']')
@@ -294,37 +344,66 @@ class CompilationEngine:
         let_element.append(self.compileExpression())
         self._process_element(let_element, 'SYMBOL', ';')
 
+        seg, idx = self._getSegmentAndIndex(lvalueName)
+        self.vmWriter.writePop(seg, idx)
+
         return let_element
 
     def compileIf(self):
         if_element = ET.Element('ifStatement')
         
+        label_true, label_false, label_end = self.symbol_table._getBaseLabel(['true', 'false', 'end'])
+
         self._process_element(if_element, 'KEYWORD', 'if')
         self._process_element(if_element, 'SYMBOL', '(')
         if_element.append(self.compileExpression())
         self._process_element(if_element, 'SYMBOL', ')')
+
+        self.vmWriter.writeIf(label_true)
+        self.vmWriter.writeGoto(label_false)
+
+        self.vmWriter.writeLabel(label_true)
         self._process_element(if_element, 'SYMBOL', '{')
         if_element.append(self.compileStatements())
         self._process_element(if_element, 'SYMBOL', '}')
-        if self.tokenizer.currentToken() == 'else':
+
+        # Jumping past the label_false
+        self.vmWriter.writeGoto(label_end)
+
+        self.vmWriter.writeLabel(label_false)  
+
+        if self.tokenizer.peekCurrentToken() == 'else':
             self._process_element(if_element, 'KEYWORD', 'else')
             self._process_element(if_element, 'SYMBOL', '{')
             if_element.append(self.compileStatements())
             self._process_element(if_element, 'SYMBOL', '}')
 
+        self.vmWriter.writeLabel(label_end)
+
         return if_element
 
     def compileWhile(self):
         while_element = ET.Element('whileStatement')
+
+        label_condition, label_begin, label_end = self.symbol_table._getBaseLabel(['condition', 'begin', 'end'])
         
+        self.vmWriter.writeLabel(label_condition)
+
         self._process_element(while_element, 'KEYWORD', 'while')
         self._process_element(while_element, 'SYMBOL', '(')
         while_element.append(self.compileExpression())
         self._process_element(while_element, 'SYMBOL', ')')
+
+        self.vmWriter.writeIf(label_begin)
+        self.vmWriter.writeGoto(label_end)
+
+        self.vmWriter.writeLabel(label_begin)
         self._process_element(while_element, 'SYMBOL', '{')
         while_element.append(self.compileStatements())
         self._process_element(while_element, 'SYMBOL', '}')
 
+        self.vmWriter.writeGoto(label_condition)
+        self.vmWriter.writeLabel(label_end)
 
         return while_element
 
@@ -334,32 +413,45 @@ class CompilationEngine:
         self._compileSubroutineCall(do_element)
         self._process_element(do_element, 'SYMBOL', ';')
         return do_element
-    
+   
     def _compileSubroutineCall(self, parent_element):
+        subroutine_name = ''
 
+        subroutine_name += self.tokenizer.peekCurrentToken()
         self._process_element(parent_element, 'IDENTIFIER')
-        if self.tokenizer.currentToken() == '.':
+        if self.tokenizer.peekCurrentToken() == '.':
+            subroutine_name += self.tokenizer.peekCurrentToken()
             self._process_element(parent_element, 'SYMBOL', '.')
+            subroutine_name += self.tokenizer.peekCurrentToken()
             self._process_element(parent_element, 'IDENTIFIER')
 
         self._process_element(parent_element, 'SYMBOL', '(')
-        parent_element.append(self.compileExpressionList())
+        expressionList = self.compileExpressionList()
+        parent_element.append(expressionList)
         self._process_element(parent_element, 'SYMBOL', ')')
+
+        self.vmWriter.writeCall(subroutine_name, self.symbol_table.getnArgs(subroutine_name))
+        if self.symbol_table.typeOf(subroutine_name) == 'void':
+            self.vmWriter.writePop('temp', 0)
 
     def compileReturn(self):
         return_element = ET.Element('returnStatement')
 
         self._process_element(return_element, 'KEYWORD', 'return')
-        if self.tokenizer.currentToken() != ';':
+        if self.tokenizer.peekCurrentToken() != ';':
             return_element.append(self.compileExpression())
         self._process_element(return_element, 'SYMBOL', ';')        # ';'
+
+        if self.symbol_table.subroutine_type == 'void':
+            self.vmWriter.writePush('constant', 0)
+        self.vmWriter.writeReturn()
 
         return return_element
 
     def compileExpressionList(self):
         expressionList_element = ET.Element('expressionList')
-        while self.tokenizer.currentToken() != ')':
-            if self.tokenizer.currentToken() == ',':
+        while self.tokenizer.peekCurrentToken() != ')':
+            if self.tokenizer.peekCurrentToken() == ',':
                 self._process_element(expressionList_element, 'SYMBOL', ',')
             expressionList_element.append(self.compileExpression())
 
@@ -373,59 +465,94 @@ class CompilationEngine:
         expression_element = ET.Element('expression')
 
         expression_element.append(self.compileTerm())
-        while self.tokenizer.currentToken() in '+-*/&|<>=':
+        while self.tokenizer.peekCurrentToken() in '+-*/&|<>=':
+            operation = self.tokenizer.peekCurrentToken()
             self._process_element(expression_element, 'SYMBOL')
             expression_element.append(self.compileTerm())
+
+            self.vmWriter.writeArthmetic(operation)
         
         return expression_element
     
+    def _getSegmentAndIndex(self, varName):
+
+        segment_map = {
+            'arg': 'argument',
+            'var': 'local',
+        }
+
+        segment = segment_map[self.symbol_table.kindOf(varName)]
+        index = self.symbol_table.indexOf(varName)
+
+        return (segment, index)
+        
     def compileTerm(self):
-        """
-        Compiles a term. This routine is faced with a slight difficulty when
-        trying to decide between some of the alternative parsing rules.
-        Specifically, if the current token is an identifier, the routine must distinguish
-        between a variable, an array entry, and a subroutine call. A single
-        look-ahead token, which may be one of "[", "(", or ".", suffices to distinguish
-        between the three possibilities. Any other token is not part of this term and
-        should not be advanced over.
-        """
         term_element = ET.Element('term')
 
-        token_type = self.tokenizer.tokenType()
-        token_value = self.tokenizer.currentToken()
+        token_type = self.tokenizer.getCurrentTokenType()
+        token_value = self.tokenizer.peekCurrentToken()
 
         if token_type in ['INT_CONST', 'STRING_CONST']:
+            self.vmWriter.writePush('constant', self.tokenizer.peekCurrentToken())
             self._process_element(term_element, token_type)
         elif token_value in ['true', 'false', 'null', 'this']:
+            if token_value == 'true':
+                self.vmWriter.writePush('constant', '0')
+                self.vmWriter.writePush('constant', '1')
+                self.vmWriter.writeArthmetic('-')
+            elif token_value == 'false':
+                self.vmWriter.writePush('constant', '0')
+            else:
+                raise ValueError('Not setup yet!')
             self._process_element(term_element, 'KEYWORD')
         elif token_value in ['~', '-']:
-            print(token_value)
+            unary_op = self.tokenizer.peekCurrentToken()
             self._process_element(term_element, 'SYMBOL', ['~', '-'])
             term_element.append(self.compileTerm())
+            if unary_op == '-':
+                self.vmWriter.writeArthmetic('NEG')
+            else:
+                self.vmWriter.writeArthmetic('NOT')
         elif token_value == '(':
             self._process_element(term_element, 'SYMBOL', '(')
             term_element.append(self.compileExpression())
             self._process_element(term_element, 'SYMBOL', ')')
         elif token_type == 'IDENTIFIER':
-            next_token = self.tokenizer.peek()
+            next_token = self.tokenizer.peekNextToken()
             if next_token in ('.', '('):
                 self._compileSubroutineCall(term_element)
             else:
+                varName = self.tokenizer.peekCurrentToken()
                 self._process_element(term_element, 'IDENTIFIER') # varName
-                if self.tokenizer.currentToken() == '[':
+                if self.tokenizer.peekCurrentToken() == '[':
                     self._process_element(term_element, 'SYMBOL', '[')
                     term_element.append(self.compileExpression())
                     self._process_element(term_element, 'SYMBOL', ']')
+
+                segment, index = self._getSegmentAndIndex(varName)
+                self.vmWriter.writePush(segment, index)
         else:
             raise SyntaxError(f"Unexpected token in term: {token_value}")
 
         return term_element
 
 
+
+import argparse
+
 if __name__ == '__main__':
+
+    # Flag configurations
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--mode', type=str, choices=['vm', 'xml'], default='vm')
+    parser.add_argument('--input', type=str, default='D:\\NANDtoTETRIS\\projects\\11\\Seven\\Main.jack')
+
+
+    args = parser.parse_args()
+
     # Define the input and output file paths
     # IMPORTANT: Update this path to where your Jack file is located.
-    input_jack_file = 'D:\\NANDtoTETRIS\\projects\\11\\Seven\\Main.jack'
+    input_jack_file = args.input
     output_xml_file = 'Main.xml' # This will be created in the same directory as the script
     output_vmcode_file = 'Main.vm'
 
@@ -435,10 +562,18 @@ if __name__ == '__main__':
             jack_code = f.read()
 
         # Initialize the tokenizer and compilation engine
-        jt = JackTokenizer(jack_code)
-        vw = VMWriter()
-        ce = CompilationEngine(jt, vw)
-        ce.run()
+        tokenizer = JackTokenizer(jack_code)
+        vm_writer = VMWriter()
+        compilation_engine = CompilationEngine(tokenizer, vm_writer)
+
+        compilation_engine.symbol_table.define_signature('Output.println', 'function', 'void', 1, None)
+        compilation_engine.symbol_table.define_signature('Memory.peek', 'function', 'int', 1, None)
+        compilation_engine.symbol_table.define_signature('Memory.poke', 'function', 'void', 2, None)
+        compilation_engine.symbol_table.define_signature('Memory.alloc', 'function', 'int', 1, None)
+
+        compilation_engine.compile()
+        print("\n".join(vm_writer.vmcode))
+
 
 
     except FileNotFoundError:

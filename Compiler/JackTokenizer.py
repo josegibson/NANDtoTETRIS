@@ -54,19 +54,19 @@ class JackTokenizer:
             raise KeyError
         
     def keyword(self):
-        return f'<keyword>{self.currentToken()}</keyword>' if self.tokenType() == 'KEYWORD' else None
+        return f'<keyword>{self.peekCurrentToken()}</keyword>' if self.getCurrentTokenType() == 'KEYWORD' else None
     
     def symbol(self):
-        return f'<symbol>{self.currentToken()}</symbol>' if self.tokenType() == 'SYMBOL' else None
+        return f'<symbol>{self.peekCurrentToken()}</symbol>' if self.getCurrentTokenType() == 'SYMBOL' else None
     
     def stringVal(self):
-        return f'<stringConstant>{self.currentToken()}</stringConstant>' if self.tokenType() == 'STRING_CONST' else None
+        return f'<stringConstant>{self.peekCurrentToken()}</stringConstant>' if self.getCurrentTokenType() == 'STRING_CONST' else None
     
     def intVal(self):
-        return f'<integerConstant>{self.currentToken()}</integerConstant>' if self.tokenType() == 'INT_CONST' else None
+        return f'<integerConstant>{self.peekCurrentToken()}</integerConstant>' if self.getCurrentTokenType() == 'INT_CONST' else None
     
     def identifier(self):
-        return f'<identifier>{self.currentToken()}</identifier>' if self.tokenType() == 'IDENTIFIER' else None
+        return f'<identifier>{self.peekCurrentToken()}</identifier>' if self.getCurrentTokenType() == 'IDENTIFIER' else None
     
 
 
