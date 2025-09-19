@@ -48,7 +48,7 @@ class CodeWriter():
             elif op == 'or':
                 res.append('M=D|M')
             else:
-                res.extend(['M=M-D', 'D=M'])
+                res.extend(['D=M-D'])
 
                 if op == 'eq':
                     res.extend([f'@TRUE_{self.label_id}', 'D;JEQ'])
@@ -91,11 +91,11 @@ class CodeWriter():
             elif segment == 'pointer':
                 res.extend([f'@{self._get_label(segment, i)}', 'D=A', '@temp', 'M=D'])
             else:
-                res.extend([f'@{i}', 'D=A', f'@{self._get_label(segment, i)}', 'A=M', 'D=D+A', '@temp', 'M=D'])
+                res.extend([f'@{i}', 'D=A', f'@{self._get_label(segment, i)}', 'D=D+M', '@R13', 'M=D'])
             # pop the stack to D
             res.extend(['@SP', 'A=M-1', 'D=M'])
             # Opening the address saved in temp and setting D to it
-            res.extend(['@temp', 'A=M', 'M=D'])  
+            res.extend(['@R13', 'A=M', 'M=D'])  
             # Decrement SP
             res.extend(['@SP', 'M=M-1'])
 
@@ -106,7 +106,7 @@ class CodeWriter():
         if instruction[0] == 'label':
             res.extend([f"({instruction[1]})"])
         elif instruction[0] == 'if-goto':
-            res.extend(['@SP', 'AM=M-1', 'D=M', f"@{instruction[1]}", 'D;JGT'])
+            res.extend(['@SP', 'AM=M-1', 'D=M', f"@{instruction[1]}", 'D;JNE'])
         elif instruction[0] == 'goto':
             res.extend([f'@{instruction[1]}', '0;JMP'])
         return res
@@ -132,14 +132,14 @@ class CodeWriter():
 
 
             # Save the current frame
-            res.extend([f'@{retAddr}', 'D=A', '@SP', 'A=M', 'M=D', '@SP', 'A=M', 'M=D', '@SP', 'M=M+1']) # Save the return address(*SP - nArg) and increment SP
-            res.extend(['@ARG', 'D=M', '@SP', 'M=D', '@SP', 'M=M+1']) # Save ARG and increment
-            res.extend(['@LCL', 'D=M', '@SP', 'M=D', '@SP', 'M=M+1']) # Save LCL and increment
-            res.extend(['@THIS', 'D=M', '@SP', 'M=D', '@SP', 'M=M+1']) # Save THIS and increment
-            res.extend(['@THAT', 'D=M', '@SP', 'M=D', '@SP', 'M=M+1']) # Save THAT and increment
+            res.extend([f'@{retAddr}', 'D=A', '@SP', 'A=M', 'M=D', '@SP', 'M=M+1']) # Save the return address and increment SP
+            res.extend(['@LCL', 'D=M', '@SP', 'A=M','M=D', '@SP', 'M=M+1']) # Save LCL and increment
+            res.extend(['@ARG', 'D=M', '@SP', 'A=M', 'M=D', '@SP', 'M=M+1']) # Save ARG and increment
+            res.extend(['@THIS', 'D=M', '@SP', 'A=M','M=D', '@SP', 'M=M+1']) # Save THIS and increment
+            res.extend(['@THAT', 'D=M', '@SP', 'A=M','M=D', '@SP', 'M=M+1']) # Save THAT and increment
 
             # Set the frame for this current function
-            res.extend(['@5', 'D=A', '@SP', 'D=M-D', 'A=D', 'D=M', '@ARG', 'M=D']) # Setup the ARG since it is equal to return value
+            res.extend(['@5', 'D=A', '@SP', 'D=M-D', f'@{instruction[2]}', 'D=D-A', '@ARG', 'M=D']) # Setup the ARG since it is equal *SP-5-nArgs
             res.extend(['@SP', 'D=M', '@LCL', 'M=D']) # Setup LCL since it is equal to *SP
             
             # Not defining THIS or THAT, this is required only for a constructor function
