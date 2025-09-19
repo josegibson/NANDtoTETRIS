@@ -16,7 +16,8 @@ class VMTranslator:
 
     def translate(self, filepath, outdir=None):
         # Passing static file to name static labels
-        cw = CodeWriter(filename=filepath.split('\\')[-1].split('.')[0])
+        filename = os.path.basename(filepath)
+        cw = CodeWriter(filename=os.path.splitext(filename)[0])
 
         asmcode = ''
         with open(filepath, 'r') as f:
@@ -26,7 +27,7 @@ class VMTranslator:
             asmcode = '\n'.join(map(str, final_asm))
 
 
-        outfile = filepath.split('\\')[-1].split('.')[0] + '.asm'
+        outfile = os.path.splitext(filename)[0] + '.asm'
         if outdir != None:
             outfile = os.path.join(outdir, outfile)
         
