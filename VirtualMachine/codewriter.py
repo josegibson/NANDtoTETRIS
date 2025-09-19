@@ -96,10 +96,21 @@ class CodeWriter():
 
         return res
     
+    def _translate_branching_commands(self, instruction):
+        res = []
+        if instruction[0] == 'label':
+            res.extend([f"({instruction[1]})"])
+        elif instruction[0] == 'if-goto':
+            res.extend(['@SP', 'AM=M-1', 'D=M', f"@{instruction[1]}", 'D;JGT'])
+        elif instruction[0] == 'goto':
+            res.extend([f'@{instruction[1]}', '0;JMP'])
+        
+        return res
+    
     def translate_instruction(self, instruction):
         instruction = instruction.split()
         if instruction[0] in ['label', 'if-goto', 'goto']:
-            pass
+            return self._translate_branching_commands(instruction)
         elif instruction[0] in ['push', 'pop']:
             return self._translate_memory_commands(instruction)
         elif instruction[0] in ['neg', 'not', 'add', 'sub', 'and', 'or', 'eq', 'gt', 'lt']:
@@ -111,7 +122,7 @@ class CodeWriter():
 
     def translate(self, instruction_list):
         asm = []
-        
+
         for instruction in instruction_list:
             print(instruction)
             asm.append(f'\n// {instruction}')
