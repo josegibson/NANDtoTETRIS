@@ -1,4 +1,6 @@
 from JackTokenizer import JackTokenizer
+from VMWritter import VMWriter
+from SymbolTable import SymbolTable
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
 import re
@@ -13,10 +15,12 @@ class CompilationEngine:
         'IDENTIFIER': 'identifier',
     }
 
-    def __init__(self, tokenizer: JackTokenizer, outfile=None):
+    def __init__(self, tokenizer: JackTokenizer, vWriter: VMWriter, outfile=None):
         self.tokenizer = tokenizer
         self.root = None
         self.outfile = outfile
+        self.vw = vWriter
+        self.st = SymbolTable()
         
     
     def run(self):
@@ -79,6 +83,8 @@ class CompilationEngine:
         class_element = ET.Element('class')
         
         self._process_element(class_element, 'KEYWORD', 'class')
+        class_name = self.tokenizer.currentToken()
+        print(f'Setting class name: {self.vw.class_name}')
         self._process_element(class_element, 'IDENTIFIER')
         self._process_element(class_element, 'SYMBOL', '{')
 
@@ -91,6 +97,9 @@ class CompilationEngine:
                 class_element.append(self.compileSubroutine())
 
         self._process_element(class_element, 'SYMBOL', '}')
+
+        # Actual compilation
+        self.st = SymbolTable(class_name)
 
         return class_element
     
@@ -129,8 +138,9 @@ class CompilationEngine:
         subroutine_element = ET.Element('subroutineDec')
 
         self._process_element(subroutine_element, 'KEYWORD', ['constructor', 'function', 'method'])
-        self._process_element(subroutine_element, ['KEYWORD', 'IDENTIFIER'])
-        self._process_element(subroutine_element, 'IDENTIFIER')    #subroutineName
+        self._process_element(subroutine_element, ['KEYWORD', 'IDENTIFIER'])    # type (buildin or user defined)
+        subroutine_name = self.tokenizer.currentToken()
+        self._process_element(subroutine_element, 'IDENTIFIER')                 #subroutineName
         self._process_element(subroutine_element, 'SYMBOL', '(')
         subroutine_element.append(self.compileParameterList())
         self._process_element(subroutine_element, 'SYMBOL', ')')
@@ -145,6 +155,10 @@ class CompilationEngine:
         self._process_element(subroutineBody_element, 'SYMBOL', '}')
 
         subroutine_element.append(subroutineBody_element)
+
+
+        # Actual Compilation
+        self.vw.subroutineST = SymbolTable(subroutine_name)
 
         return subroutine_element
     
@@ -336,8 +350,9 @@ class CompilationEngine:
 if __name__ == '__main__':
     # Define the input and output file paths
     # IMPORTANT: Update this path to where your Jack file is located.
-    input_jack_file = 'D:\\NANDtoTETRIS\\projects\\10\\ArrayTest\\Main.jack'
+    input_jack_file = 'D:\\NANDtoTETRIS\\projects\\11\\Seven\\Main.jack'
     output_xml_file = 'Main.xml' # This will be created in the same directory as the script
+    output_vmcode_file = 'Main.vm'
 
     try:
         # Read the source Jack code from the input file
@@ -346,9 +361,8 @@ if __name__ == '__main__':
 
         # Initialize the tokenizer and compilation engine
         jt = JackTokenizer(jack_code)
-        print(jt.tokens)
-        ce = CompilationEngine(jt)
-
+        vw = VMWriter()
+        ce = CompilationEngine(jt, vw)
         ce.run()
 
 

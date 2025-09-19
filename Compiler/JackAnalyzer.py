@@ -4,6 +4,8 @@ import sys
 
 from JackTokenizer import JackTokenizer
 from CompilationEngine import CompilationEngine
+from VMWritter import VMWriter
+from SymbolTable import SymbolTable
 
 class JackAnalyzer:
     
@@ -25,12 +27,10 @@ class JackAnalyzer:
             with open(jackfile, 'r') as f:
                 jackcode = f.read()
                 jt = JackTokenizer(jackcode)
-                ce = CompilationEngine(jt, xmlpath)
+                vw = VMWriter()
+                st = SymbolTable()
+                ce = CompilationEngine(jt, vw, xmlpath)
                 ce.run()
-
-
-            
-
 
 
 if __name__ == '__main__':
