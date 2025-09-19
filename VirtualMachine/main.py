@@ -6,13 +6,49 @@ from codewriter import CodeWriter
 
 
 class VMTranslator:
-    def __init__(self):
+    def __init__(self, dest_dir=None):
         self.parser = Parser()
+        self.dest_dir = dest_dir
 
-    def file_validation(self, filepath):
-        if filepath.split('\\')[-1].split('.')[-1] != 'vm':
-            print('Provide a valid .vm file')
-            exit()
+    def run(self, target):
+
+        target_files = []
+
+        # Adding relevant files to target_files
+        if os.path.isdir(target):
+            target_files.extend([os.path.join(target, i) for i in os.listdir(target)])
+        elif os.path.isfile(target):
+            target_files.append(target)
+
+        # Filtering to keep only the .vm files
+        target_files = [file for file in target_files if os.path.splitext(os.path.basename(file))[-1] == '.vm']
+
+        if len(target_files) == 0:
+            raise ValueError('No valid .vm file found')
+        
+        
+        final_asmcode = []
+
+        for vmfile in target_files:
+            codew = CodeWriter(os.path.splitext(os.path.basename(vmfile))[0])
+            with open(vmfile, 'r') as f:
+                vmcode = self.parser.parse(f.read())
+                asmcode = codew.translate(vmcode)
+                if os.path.basename(vmfile) == 'Sys.vm':
+                    final_asmcode = asmcode + final_asmcode
+                else:
+                    final_asmcode.append(asmcode)
+
+        
+        final_asmcode = '/n'.join(final_asmcode)
+
+        asmfile = os.path.splitext(os.path.basename(target))[0] + '.asm'
+        if self.dest_dir:
+            asmfile = os.path.join(self.dest_dir, asmfile)
+        with open(asmfile, 'w') as f:
+            f.write(final_asmcode)
+
+
 
     def translate(self, filepath, outdir=None):
         # Passing static file to name static labels
@@ -38,4 +74,4 @@ class VMTranslator:
 
 if __name__ == "__main__":
     vmt = VMTranslator()
-    vmt.translate(sys.argv[1])
+    vmt.run(sys.argv[1])
