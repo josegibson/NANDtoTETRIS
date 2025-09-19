@@ -28,6 +28,9 @@ class SymbolTable:
         self.index_counters['var'] = 0
         self.index_counters['arg'] = 0
 
+    def __contains__(self, symbol):
+        return symbol in self.subroutine_scope or symbol in self.class_scope
+
     def define_signature(self, name, kind, type, nArgs, nLocals):
         entry = {'kind': kind, 'type': type, 'nArgs': nArgs, 'nLocals': nLocals}
 

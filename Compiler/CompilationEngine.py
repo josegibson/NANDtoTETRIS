@@ -267,6 +267,9 @@ class CompilationEngine:
         if subroutine_kind == 'constructor':
             self.vmWriter.writePush('constant', self.symbol_table.index_counters['field'])
             self.vmWriter.writeCall('Memory.alloc', 1)
+            self.vmWriter.writePop('pointer', 0)    
+        elif subroutine_kind == 'method':
+            self.vmWriter.writePush('argument', 0)
             self.vmWriter.writePop('pointer', 0)
 
         # subroutine Body
@@ -418,23 +421,40 @@ class CompilationEngine:
         return do_element
    
     def _compileSubroutineCall(self, parent_element):
-        subroutine_name = ''
+        subroutineName = ''
 
-        subroutine_name += self.tokenizer.peekCurrentToken()
+        className = self.tokenizer.peekCurrentToken()
         self._process_element(parent_element, 'IDENTIFIER')
         if self.tokenizer.peekCurrentToken() == '.':
-            subroutine_name += self.tokenizer.peekCurrentToken()
+            # Implies that this subroutine is an object method
             self._process_element(parent_element, 'SYMBOL', '.')
-            subroutine_name += self.tokenizer.peekCurrentToken()
+            subroutineName = self.tokenizer.peekCurrentToken()
             self._process_element(parent_element, 'IDENTIFIER')
-
+        else:
+            # The function must be defined in the class scope, reassign className to subroutine name
+            subroutineName = className
+            className = self.symbol_table.class_name
+    
         self._process_element(parent_element, 'SYMBOL', '(')
         expressionList = self.compileExpressionList()
         parent_element.append(expressionList)
         self._process_element(parent_element, 'SYMBOL', ')')
 
         subroutineCall_args = [child for child in list(expressionList) if child.tag == 'expression']
-        self.vmWriter.writeCall(subroutine_name, len(subroutineCall_args))
+        nArgs = len(subroutineCall_args)
+
+        # Consulting the symbol table for the class name in case 'className' is an object
+        if className in self.symbol_table:
+            # A method call on an object called className
+            className = self.symbol_table.typeOf(className)
+            
+        if className == self.symbol_table.class_name:
+            # Addressing the first object push
+            self.vmWriter.writePush('pointer', 0)
+            nArgs += 1
+
+        subroutineName = f'{className}.{subroutineName}'
+        self.vmWriter.writeCall(subroutineName, nArgs)
 
     def compileReturn(self):
         return_element = ET.Element('returnStatement')
