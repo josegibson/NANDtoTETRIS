@@ -65,7 +65,11 @@ class CompilationEngine:
                     self.symbol_table.define(name, type, kind)
 
             elif self.tokenizer.peekCurrentToken() in ['constructor', 'function', 'method']:
+                nArgs = 0
+
                 subroutine_kind = self.tokenizer.peekCurrentToken()
+                if subroutine_kind == 'method':
+                    nArgs += 1
                 self.tokenizer.advance()
 
                 subroutine_type = self.tokenizer.peekCurrentToken()
@@ -74,9 +78,8 @@ class CompilationEngine:
                 subroutine_name = self.tokenizer.peekCurrentToken()
                 self.tokenizer.advance()
 
-                self.symbol_table.startSubroutine(subroutine_name)
+                self.symbol_table.startSubroutine(subroutine_name, subroutine_kind, subroutine_type)
 
-                nArgs = 0
                 self.tokenizer.advance()    # (
                 while self.tokenizer.peekCurrentToken() != ')':
                     arg_kind = self.tokenizer.peekCurrentToken()
@@ -267,15 +270,21 @@ class CompilationEngine:
         subroutine_element = ET.Element('subroutineDec')
         subroutine_kind = self.tokenizer.peekCurrentToken()
         self._process_element(subroutine_element, 'KEYWORD', ['constructor', 'function', 'method'])
+        subroutine_type = self.tokenizer.peekCurrentToken()
         self._process_element(subroutine_element, ['KEYWORD', 'IDENTIFIER'])    # type (buildin or user defined)
-        name = self.tokenizer.peekCurrentToken()
-        self.symbol_table.startSubroutine(name)
+        
+        subroutineName = self.tokenizer.peekCurrentToken()
+        self.symbol_table.startSubroutine(subroutineName, subroutine_kind, subroutine_type)
+        if subroutine_kind == 'method':
+            # This is not used, but offsets other argument indices
+            self.symbol_table.define('this', self.symbol_table.class_name, 'arg')
+
         self._process_element(subroutine_element, 'IDENTIFIER')                 #subroutineName
         self._process_element(subroutine_element, 'SYMBOL', '(')
         subroutine_element.append(self.compileParameterList())
         self._process_element(subroutine_element, 'SYMBOL', ')')
 
-        mangled_subroutine_name = f"{self.symbol_table.class_name}.{name}"
+        mangled_subroutine_name = f"{self.symbol_table.class_name}.{subroutineName}"
         self.vmWriter.writeFunction(mangled_subroutine_name, self.symbol_table.getnLocals(mangled_subroutine_name))
         if subroutine_kind == 'constructor':
             self.vmWriter.writePush('constant', self.symbol_table.index_counters['field'])
