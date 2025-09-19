@@ -43,11 +43,14 @@ class JackAnalyzer:
                     basename, extension = os.path.splitext(filename)
                     output_filename = basename + f'.{self.mode}'
 
+                    if not os.path.exists(self.destination):
+                        os.makedirs(self.destination)
+
                     if os.path.isdir(self.destination):
                         with open(os.path.join(self.destination, output_filename), 'w') as f:
                             f.write(out)
                     else:
-                        raise ValueError('Destination must be stdout or a directory!')
+                        raise ValueError('Destination must be a directory!')
 
 
 
