@@ -14,6 +14,9 @@ class JackTokenizer:
         self.tokens = re.findall(token_pattern, code)
 
         self.tokenslen = len(self.tokens)
+        self.reset()
+
+    def reset(self):
         self.curr = 0
 
     def hasMoreTokens(self):
@@ -22,19 +25,19 @@ class JackTokenizer:
     def advance(self):
         self.curr += 1
 
-    def currentToken(self):
+    def peekCurrentToken(self):
         if self.hasMoreTokens():
             return self.tokens[self.curr]
         else:
             print(self.tokenslen, self.curr)
             raise KeyError
         
-    def peek(self):
+    def peekNextToken(self):
         if self.curr + 1 < self.tokenslen:
             return self.tokens[self.curr + 1]
         else:
             raise KeyError    
-    def tokenType(self):
+    def getCurrentTokenType(self):
         currtoken = self.tokens[self.curr]
 
         if currtoken in self.KEYWORDS:
@@ -100,5 +103,5 @@ if __name__ == '__main__':
     
     
     while jt.hasMoreTokens():
-        print(jt.tokenType(), jt.currentToken())
+        print(jt.getCurrentTokenType(), jt.peekCurrentToken())
         jt.advance()

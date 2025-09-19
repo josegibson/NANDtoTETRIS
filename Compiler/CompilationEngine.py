@@ -18,35 +18,110 @@ class CompilationEngine:
     def __init__(self, tokenizer: JackTokenizer, vWriter: VMWriter, outfile=None):
         self.tokenizer = tokenizer
         self.root = None
-        self.outfile = outfile
-        self.vw = vWriter
-        self.st = SymbolTable()
+
+    def _buildSymbolTable(self):
         
-    
-    def run(self):
-        
-        if self.tokenizer.currentToken() == 'class':
-            self.root = self.compileClass()
-        else:
-            raise SyntaxError('A Jack file must start with a class declaration.')
-        
+        while self.tokenizer.hasMoreTokens():
+            if self.tokenizer.peekCurrentToken() == 'class':
+                # Skip the class keyword
+                self.tokenizer.advance()    
+                self.symbol_table.class_name = self.tokenizer.peekCurrentToken()
+            elif self.tokenizer.peekCurrentToken() in ['static', 'field']:
+                kind = self.tokenizer.peekCurrentToken()
+                self.tokenizer.advance()
+
+                type = self.tokenizer.peekCurrentToken()
+                self.tokenizer.advance()
+
+                name = self.tokenizer.peekCurrentToken()
+                self.tokenizer.advance()
+
+                self.symbol_table.define(name, type, kind)
+
+                while self.tokenizer.peekCurrentToken() == ',':
+                    # Skip the ','
+                    self.tokenizer.advance()
+
+                    name = self.tokenizer.peekCurrentToken()
+                    self.tokenizer.advance()
+
+                    self.symbol_table.define(name, type, kind)
+
+            elif self.tokenizer.peekCurrentToken() in ['constructor', 'function', 'method']:
+                subroutine_kind = self.tokenizer.peekCurrentToken()
+                self.tokenizer.advance()
+
+                subroutine_type = self.tokenizer.peekCurrentToken()
+                self.tokenizer.advance()
+
+                subroutine_name = self.tokenizer.peekCurrentToken()
+                self.tokenizer.advance()
+
+                self.symbol_table.startSubroutine(subroutine_name)
+
+                nArgs = 0
+                self.tokenizer.advance()    # (
+                while self.tokenizer.peekCurrentToken() != ')':
+                    arg_kind = self.tokenizer.peekCurrentToken()
+                    self.tokenizer.advance()
+
+                    arg_name = self.tokenizer.peekCurrentToken()
+                    self.tokenizer.advance()
+
+                    nArgs += 1
+                    self.symbol_table.define(arg_name, arg_kind, 'arg')
+
+                    if self.tokenizer.peekCurrentToken() == ',':
+                        self.tokenizer.advance()
+
+                self.tokenizer.advance()    # )
+
+                self.tokenizer.advance()    # {
+                nLocals = 0
+                while self.tokenizer.peekCurrentToken() == 'var':
+                    kind = self.tokenizer.peekCurrentToken()
+                    self.tokenizer.advance()
+
+                    type = self.tokenizer.peekCurrentToken()
+                    self.tokenizer.advance()
+
+                    while self.tokenizer.getCurrentTokenType() == 'IDENTIFIER':
+                        name = self.tokenizer.peekCurrentToken()
+                        self.tokenizer.advance()
+
+                        if self.tokenizer.peekCurrentToken() == ',':
+                            self.tokenizer.advance()
+
+                        nLocals += 1
+                        self.symbol_table.define(name, type, kind)
+
+                    self.tokenizer.advance()    # ;
+
+                self.symbol_table.define_signature(f"{self.symbol_table.class_name}.{subroutine_name}", subroutine_kind, subroutine_type, nArgs, nLocals)
+
+            self.tokenizer.advance()
         rough_string = ET.tostring(self.root, 'utf-8')
         reparsed = minidom.parseString(rough_string)
         pretty_xml_string = reparsed.documentElement.toprettyxml(indent="  ")
         # Use this in your re.sub() call
         pretty_xml_string = re.sub(r'\n[ \t]*<!-- -->', '', pretty_xml_string)
+    def compile(self):
+
+        if self.tokenizer.peekCurrentToken() == 'class':
+            self._buildSymbolTable()
+
+            print('Class scope', self.symbol_table.class_scope)
+
+            self.tokenizer.reset()
+            self.root = self.compileClass()
+        else:
+            raise SyntaxError('A Jack file must start with a class declaration.')
         
 
-
-        if self.outfile:
-            # Write the formatted XML string to the output file
-            with open(self.outfile, 'w') as f:
-                f.write(pretty_xml_string)
-            
-            print(f"Compilation successful! Output written to '{self.outfile}'")
+        if self.mode == 'vm':
+            return self._pretty_vmcode()
         else:
-            # Print the XML to the console as well
-            print(pretty_xml_string)
+            return self._pretty_xml()
 
     def _process_element(self, parent_element: ET.Element, expected_type=None, expected_value=None):
         
