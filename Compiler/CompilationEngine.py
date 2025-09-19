@@ -339,18 +339,33 @@ class CompilationEngine:
         self._process_element(let_element, 'KEYWORD', 'let')
         lvalueName = self.tokenizer.peekCurrentToken()
         self._process_element(let_element, 'IDENTIFIER')
+
+        lvalue_indexing = self.symbol_table.typeOf(lvalueName) == 'Array' and self.tokenizer.peekCurrentToken() == '['
     
-        if self.tokenizer.peekCurrentToken() == '[':
+        if lvalue_indexing:
+
+            seg, idx = self._getSegmentAndIndex(lvalueName)
+            self.vmWriter.writePush(seg, idx)
+
             self._process_element(let_element, 'SYMBOL', '[')
             let_element.append(self.compileExpression())
             self._process_element(let_element, 'SYMBOL', ']')
+
+            self.vmWriter.writeArthmetic('+')
+            self.vmWriter.writePop('temp', 0)
 
         self._process_element(let_element, 'SYMBOL', '=')
         let_element.append(self.compileExpression())
         self._process_element(let_element, 'SYMBOL', ';')
 
-        seg, idx = self._getSegmentAndIndex(lvalueName)
-        self.vmWriter.writePop(seg, idx)
+        if lvalue_indexing:
+            self.vmWriter.writePush('temp', 0)
+            self.vmWriter.writePop('pointer', 0)
+            self.vmWriter.writePop('this', 0)
+
+        else:
+            seg, idx = self._getSegmentAndIndex(lvalueName)
+            self.vmWriter.writePop(seg, idx)
 
         return let_element
 
@@ -548,13 +563,20 @@ class CompilationEngine:
             else:
                 varName = self.tokenizer.peekCurrentToken()
                 self._process_element(term_element, 'IDENTIFIER') # varName
+
+                segment, index = self._getSegmentAndIndex(varName)
+                self.vmWriter.writePush(segment, index)
+
                 if self.tokenizer.peekCurrentToken() == '[':
+                    # Array
                     self._process_element(term_element, 'SYMBOL', '[')
                     term_element.append(self.compileExpression())
                     self._process_element(term_element, 'SYMBOL', ']')
 
-                segment, index = self._getSegmentAndIndex(varName)
-                self.vmWriter.writePush(segment, index)
+                    self.vmWriter.writeArthmetic('+')
+                    self.vmWriter.writePop('pointer', 1)
+                    self.vmWriter.writePush('that', 0)
+
         else:
             raise SyntaxError(f"Unexpected token in term: {token_value}")
 
