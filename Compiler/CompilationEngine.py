@@ -132,12 +132,11 @@ class CompilationEngine:
     def compile(self):
 
         if self.tokenizer.peekCurrentToken() == 'class':
+
             self._buildSymbolTable()
-
-            print('Class scope', self.symbol_table.class_scope)
-
             self.tokenizer.reset()
             self.root = self.compileClass()
+
         else:
             raise SyntaxError('A Jack file must start with a class declaration.')
         
@@ -516,6 +515,8 @@ class CompilationEngine:
         segment_map = {
             'arg': 'argument',
             'var': 'local',
+            'field': 'this',
+            'static': 'static'
         }
 
         segment = segment_map[self.symbol_table.kindOf(varName)]
@@ -530,7 +531,22 @@ class CompilationEngine:
         token_value = self.tokenizer.peekCurrentToken()
 
         if token_type in ['INT_CONST', 'STRING_CONST']:
-            self.vmWriter.writePush('constant', self.tokenizer.peekCurrentToken())
+            if token_type == 'INT_CONST':
+                self.vmWriter.writePush('constant', self.tokenizer.peekCurrentToken())
+            elif token_type == 'STRING_CONST':
+
+                string = token_value.strip('\"')
+
+                # Creating the string object
+                self.vmWriter.writePush('constant', len(string))
+                self.vmWriter.writeCall('String.new', 1)
+
+                # Adding each character to the string object created
+                for c in string:
+                    self.vmWriter.writePush('constant', ord(c))
+                    self.vmWriter.writeCall('String.appendChar', 2)
+                
+
             self._process_element(term_element, token_type)
         elif token_value in ['true', 'false', 'null', 'this']:
             if token_value == 'true':

@@ -51,6 +51,7 @@ class SymbolTable:
 
         if entry['kind'] in ['static','field']:
             entry['index'] = self.class_index_counter
+            self.index_counters[entry['kind']] += 1
             self.class_index_counter += 1
 
             if name in self.class_scope:
