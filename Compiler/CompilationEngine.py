@@ -98,3 +98,107 @@ class CompilationEngine:
         self._process_element(varDec_element, 'SYMBOL', ';')
 
         return varDec_element
+
+    def compileStatements(self):
+        statements_element = ET.Element('statements')
+
+        while self.tokenizer.currentToken() in ['let', 'if', 'while', 'do', 'return']:
+
+            if self.tokenizer.currentToken() == 'let':
+                statements_element.append(self.compileLet())
+
+            elif self.tokenizer.currentToken() == 'if':
+                statements_element.append(self.compileIf())
+
+            elif self.tokenizer.currentToken() == 'while':
+                statements_element.append(self.compileWhile())
+
+            elif self.tokenizer.currentToken() == 'do':
+                statements_element.append(self.compileDo())
+
+            elif self.tokenizer.currentToken() == 'return':
+                statements_element.append(self.compileReturn())
+
+                # If the element has no children, give it empty text to prevent self-closing.
+        if not list(statements_element):
+            statements_element.append(ET.Comment(" "))
+
+
+        return statements_element
+
+    def compileLet(self):
+        let_element = ET.Element('letStatement')
+
+        self._process_element(let_element, 'KEYWORD', 'let')
+        self._process_element(let_element, 'IDENTIFIER')
+    
+        if self.tokenizer.currentToken() == '[':
+            self._process_element(let_element, 'SYMBOL', '[')
+            let_element.append(self.compileExpression())
+            self._process_element(let_element, 'SYMBOL', ']')
+
+        self._process_element(let_element, 'SYMBOL', '=')
+        let_element.append(self.compileExpression())
+        self._process_element(let_element, 'SYMBOL', ';')
+
+        return let_element
+
+    def compileIf(self):
+        if_element = ET.Element('ifStatement')
+        
+        self._process_element(if_element, 'KEYWORD', 'if')
+        self._process_element(if_element, 'SYMBOL', '(')
+        if_element.append(self.compileExpression())
+        self._process_element(if_element, 'SYMBOL', ')')
+        self._process_element(if_element, 'SYMBOL', '{')
+        if_element.append(self.compileStatements())
+        self._process_element(if_element, 'SYMBOL', '}')
+        if self.tokenizer.currentToken() == 'else':
+            self._process_element(if_element, 'KEYWORD', 'else')
+            self._process_element(if_element, 'SYMBOL', '{')
+            if_element.append(self.compileStatements())
+            self._process_element(if_element, 'SYMBOL', '}')
+
+        return if_element
+
+    def compileWhile(self):
+        while_element = ET.Element('whileStatement')
+        
+        self._process_element(while_element, 'KEYWORD', 'while')
+        self._process_element(while_element, 'SYMBOL', '(')
+        while_element.append(self.compileExpression())
+        self._process_element(while_element, 'SYMBOL', ')')
+        self._process_element(while_element, 'SYMBOL', '{')
+        while_element.append(self.compileStatements())
+        self._process_element(while_element, 'SYMBOL', '}')
+
+
+        return while_element
+
+    def compileDo(self):
+        do_element = ET.Element('doStatement')
+        self._process_element(do_element, 'KEYWORD', 'do')
+        self._compileSubroutineCall(do_element)
+        self._process_element(do_element, 'SYMBOL', ';')
+        return do_element
+    
+    def _compileSubroutineCall(self, parent_element):
+
+        self._process_element(parent_element, 'IDENTIFIER')
+        if self.tokenizer.currentToken() == '.':
+            self._process_element(parent_element, 'SYMBOL', '.')
+            self._process_element(parent_element, 'IDENTIFIER')
+
+        self._process_element(parent_element, 'SYMBOL', '(')
+        parent_element.append(self.compileExpressionList())
+        self._process_element(parent_element, 'SYMBOL', ')')
+
+    def compileReturn(self):
+        return_element = ET.Element('returnStatement')
+
+        self._process_element(return_element, 'KEYWORD', 'return')
+        if self.tokenizer.currentToken() != ';':
+            return_element.append(self.compileExpression())
+        self._process_element(return_element, 'SYMBOL', ';')        # ';'
+
+        return return_element
