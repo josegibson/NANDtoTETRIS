@@ -28,7 +28,8 @@ class CodeWriter():
         else:
             return self.label[segment_id]
         
-    def translate_arthmetic_commands(self, op):
+    def _translate_arthmetic_commands(self, instruction):
+        op = instruction[0]
         res = []
 
         if op == 'neg':
@@ -173,7 +174,7 @@ class CodeWriter():
         elif instruction[0] in ['push', 'pop']:
             return self._translate_memory_commands(instruction)
         elif instruction[0] in ['neg', 'not', 'add', 'sub', 'and', 'or', 'eq', 'gt', 'lt']:
-            return self.translate_arthmetic_commands(instruction)
+            return self._translate_arthmetic_commands(instruction)
         elif instruction[0] in ['function', 'call', 'return']:
             return self._translate_function_commands(instruction)
         else:
