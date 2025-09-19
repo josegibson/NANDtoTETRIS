@@ -14,7 +14,8 @@ expected_output_path = os.path.join(os.path.dirname(__file__), "expected_output"
     "PointerTest",
     "SimpleAdd",
     "StackTest",
-    "StaticTest"
+    "StaticTest",
+    'BasicLoop'
 ])
 def test_translation(test_name):
 
@@ -34,5 +35,6 @@ def test_translation(test_name):
     with open(expected_output) as f:
         expected_out = f.read()
 
+    # Use the Parser.clean if needed to remove spaces and comments later!
     assert out == expected_out
 
