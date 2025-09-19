@@ -76,7 +76,7 @@ class CodeWriter():
             if segment != 'constant':
                 if segment == 'temp':
                     res.extend([f'@5', 'D=D+A', 'A=D', 'D=M'])
-                elif segment == 'pointer':
+                elif segment == 'pointer' or segment == 'static':
                     res.extend([f'@{self._get_label(segment, i)}', 'D=M'])
                 else:
                     res.extend([f'@{self._get_label(segment, i)}', 'D=D+M', 'A=D', 'D=M'])
@@ -86,9 +86,9 @@ class CodeWriter():
         elif stk_op == 'pop':
             # temp = destination address
             if segment == 'temp':
-                res.extend([f'@{i}', 'D=A', '@5', 'D=D+A', '@temp', 'M=D'])
-            elif segment == 'pointer':
-                res.extend([f'@{self._get_label(segment, i)}', 'D=A', '@temp', 'M=D'])
+                res.extend([f'@{i}', 'D=A', '@5', 'D=D+A', '@R13', 'M=D'])
+            elif segment == 'pointer' or segment == 'static':
+                res.extend([f'@{self._get_label(segment, i)}', 'D=A', '@R13', 'M=D'])
             else:
                 res.extend([f'@{i}', 'D=A', f'@{self._get_label(segment, i)}', 'D=D+M', '@R13', 'M=D'])
             # pop the stack to D
@@ -112,18 +112,19 @@ class CodeWriter():
 
     def _translate_function_commands(self, instruction):
         res = []
-        if instruction[0] == 'function':
-            # Add to the function map, along with the local variables requirements
-            self.function_map[instruction[1]] = instruction[2]
-            self.function_seed[instruction[1]] = 0
 
-            # Add (function name) to the asm command (filename already included int the functioname in vmcode)
+        if instruction[0] == 'function':
+            
+            # Add (function name) to the asm command (filename already included in the functioname in vmcode)
             res.extend([f'({instruction[1]})'])
 
+            
+
             # Setting up the local variabels to 0
-            res.extend(['@0', 'D=A'])
-            for i in range(instruction[2]):
-                res.extend(['@SP', 'A=M', 'M=D', '@SP', 'M=M+1'])
+            if int(instruction[2]) > 0:
+                res.extend(['@0', 'D=A'])
+                for i in range(int(instruction[2])):
+                    res.extend(['@SP', 'A=M', 'M=D', '@SP', 'M=M+1'])
 
         elif instruction[0] == 'call':
             # Create a label for the return address
@@ -143,11 +144,6 @@ class CodeWriter():
             res.extend(['@SP', 'D=M', '@LCL', 'M=D']) # Setup LCL since it is equal to *SP
             
             # Not defining THIS or THAT, this is required only for a constructor function
-
-            # # Set up the local variables required using lookup
-            # res.extend(['@0', 'D=A', '@SP', 'A=M'])
-            # for i in range(self.function_map[instruction[1]]):
-            #     res.extend(['M=D', 'A=A+1', '@SP', 'M=M+1']) # Set 0 and increment SP. Note: D = 0
 
             # Do @function label and jump
             res.extend([f'@{instruction[1]}', '0;JMP'])
