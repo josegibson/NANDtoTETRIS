@@ -20,17 +20,14 @@ class JackAnalyzer:
 
     def compile(self):
         for jackfile in self.jackfiles:
-            xmlcode = None
+            xmlpath = os.path.join(self.destination, f'{os.path.splitext(os.path.basename(jackfile))[0]}.xml')
 
             with open(jackfile, 'r') as f:
                 jackcode = f.read()
                 jt = JackTokenizer(jackcode)
-                ce = CompilationEngine(jt)
-                xmlcode = ce.run()
+                ce = CompilationEngine(jt, xmlpath)
+                ce.run()
 
-            xmlpath = os.path.join(self.destination, f'{os.path.splitext(os.path.basename(jackfile))[0]}.xml')
-            with open(xmlpath, 'w') as f:
-                f.write(xmlcode)
 
             
 

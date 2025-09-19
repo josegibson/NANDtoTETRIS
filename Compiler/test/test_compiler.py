@@ -26,7 +26,7 @@ def test_compiler(testname):
         with open(os.path.join(project_path, testname, xmlfile), 'r') as f:
             comparedata = f.read()
 
-        assert outputdata == comparedata
+        assert comparedata == outputdata
         
     
 
