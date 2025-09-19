@@ -68,6 +68,42 @@ class CodeWriter():
                 self.label_id += 1
             res.extend(['@SP', 'M=M+1'])        
         return res
+    
+    def _translate_memory_commands(self, instruction):
+        res = []
+        stk_op = instruction[0]
+        segment = instruction[1]
+        i = instruction[2]
+
+        if stk_op == 'push':
+            # Setting the target value to D
+            res.extend([f'@{i}', 'D=A'])
+            if segment != 'constant':
+                if segment == 'temp':
+                    res.extend([f'@5', 'D=D+A', 'A=D', 'D=M'])
+                elif segment == 'pointer':
+                    res.extend([f'@{self._get_label(segment, i)}', 'D=M'])
+                else:
+                    res.extend([f'@{self._get_label(segment, i)}', 'D=D+M', 'A=D', 'D=M'])
+            # Incrementing SP and adding to stack
+            res.extend(['@SP', 'A=M', 'M=D', '@SP', 'M=M+1'])
+        
+        elif stk_op == 'pop':
+            # temp = destination address
+            if segment == 'temp':
+                res.extend([f'@{i}', 'D=A', '@5', 'D=D+A', '@temp', 'M=D'])
+            elif segment == 'pointer':
+                res.extend([f'@{self._get_label(segment, i)}', 'D=A', '@temp', 'M=D'])
+            else:
+                res.extend([f'@{i}', 'D=A', f'@{self._get_label(segment, i)}', 'A=M', 'D=D+A', '@temp', 'M=D'])
+            # pop the stack to D
+            res.extend(['@SP', 'A=M-1', 'D=M'])
+            # Opening the address saved in temp and setting D to it
+            res.extend(['@temp', 'A=M', 'M=D'])  
+            # Decrement SP
+            res.extend(['@SP', 'M=M-1'])
+
+        return res
 
     def translate(self, codelist):
         asm = []
@@ -79,44 +115,7 @@ class CodeWriter():
             elif self.is_branching_cmd(code[0]):
                 pass 
             elif self.is_memory_cmd(code[0]):
-                stk_op = code[0]
-                segment = code[1]
-                i = code[2]
-
-                if stk_op == 'push':
-
-                    # Setting the target value to D
-                    asm.extend([f'@{i}', 'D=A'])
-
-                    if segment != 'constant':
-                        if segment == 'temp':
-                            asm.extend([f'@5', 'D=D+A', 'A=D', 'D=M'])
-                        elif segment == 'pointer':
-                            asm.extend([f'@{self.get_label(segment, i)}', 'D=M'])
-                        else:
-                            asm.extend([f'@{self.get_label(segment, i)}', 'D=D+M', 'A=D', 'D=M'])
-
-                    # Incrementing SP and adding to stack
-                    asm.extend(['@SP', 'A=M', 'M=D', '@SP', 'M=M+1'])
-                
-                elif stk_op == 'pop':
-
-                    # temp = destination address
-                    if segment == 'temp':
-                        asm.extend([f'@{i}', 'D=A', '@5', 'D=D+A', '@temp', 'M=D'])
-                    elif segment == 'pointer':
-                        asm.extend([f'@{self.get_label(segment, i)}', 'D=A', '@temp', 'M=D'])
-                    else:
-                        asm.extend([f'@{i}', 'D=A', f'@{self.get_label(segment, i)}', 'A=M', 'D=D+A', '@temp', 'M=D'])
-
-                    # pop the stack to D
-                    asm.extend(['@SP', 'A=M-1', 'D=M'])
-
-                    # Opening the address saved in temp and setting D to it
-                    asm.extend(['@temp', 'A=M', 'M=D'])  
-
-                    # Decrement SP
-                    asm.extend(['@SP', 'M=M-1'])
+                asm.extend(self._translate_memory_commands(code[0]))
 
         asm.extend(['(END)', '@END', '0;JMP'])
         return asm
