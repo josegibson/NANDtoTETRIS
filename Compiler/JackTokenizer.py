@@ -3,14 +3,14 @@ import re
 
 class JackTokenizer:
     KEYWORDS = ['class', 'method', 'int', 'false', 'if', 'function', 'static', 'boolean', 'this', 'while', 'constructor', 'field', 'char', 'null', 'else', 'true', 'var', 'void', 'let', 'do', 'return']
-    SYMBOLS = set('{}()[].,;+-*/&|<>=`')
+    SYMBOLS = set('~{}()[].,;+-*/&|<>=`')
 
     def __init__(self, jackcode):
 
         code = re.sub(r"//.*$", "", jackcode, flags=re.MULTILINE)
         code = re.sub(r"/\*\*.*?\*/", "", code, flags=re.DOTALL)
 
-        token_pattern = r"\".*?\"|\d+|[_a-zA-Z]\w*|[{}\(\)\[\].,;+\-*/&|<>=`]"
+        token_pattern = r"\".*?\"|\d+|[_a-zA-Z]\w*|[{}\(\)\[\].,;+\-*/&|<>=~`]"
         self.tokens = re.findall(token_pattern, code)
 
         self.tokenslen = len(self.tokens)
@@ -28,7 +28,12 @@ class JackTokenizer:
         else:
             print(self.tokenslen, self.curr)
             raise KeyError
-    
+        
+    def peek(self):
+        if self.curr + 1 < self.tokenslen:
+            return self.tokens[self.curr + 1]
+        else:
+            raise KeyError    
     def tokenType(self):
         currtoken = self.tokens[self.curr]
 
