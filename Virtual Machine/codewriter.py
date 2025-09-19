@@ -1,8 +1,9 @@
 
 
 class CodeWriter():
-    def __init__(self):
+    def __init__(self, filename):
         self.label_id = 0
+        self.filename = filename
 
     def get_label(self, segment_id, i):
 
@@ -86,22 +87,33 @@ class CodeWriter():
 
                     # Setting the target value to D
                     asm.extend([f'@{i}', 'D=A'])
+
                     if segment != 'constant':
-                        asm.extend([f'@{self.get_label(segment)}', 'D=D+M', 'A=D', 'D=M'])
+                        if segment == 'temp':
+                            asm.extend([f'@5', 'D=D+A', 'A=D', 'D=M'])
+                        elif segment == 'pointer':
+                            asm.extend([f'@{self.get_label(segment, i)}', 'D=M'])
+                        else:
+                            asm.extend([f'@{self.get_label(segment, i)}', 'D=D+M', 'A=D', 'D=M'])
 
                     # Incrementing SP and adding to stack
-                    asm.extend(['@SP', 'M=M+1', 'A=M', 'M=D'])
+                    asm.extend(['@SP', 'A=M', 'M=D', '@SP', 'M=M+1'])
                 
                 elif stk_op == 'pop':
 
-                    # Set R6 to the destination address
-                    asm.extend([f'@{i}', 'D=A', f'@{self.get_label(segment)}', 'A=M', 'D=D+A', '@R6', 'M=D'])
+                    # temp = destination address
+                    if segment == 'temp':
+                        asm.extend([f'@{i}', 'D=A', '@5', 'D=D+A', '@temp', 'M=D'])
+                    elif segment == 'pointer':
+                        asm.extend([f'@{self.get_label(segment, i)}', 'D=A', '@temp', 'M=D'])
+                    else:
+                        asm.extend([f'@{i}', 'D=A', f'@{self.get_label(segment, i)}', 'A=M', 'D=D+A', '@temp', 'M=D'])
 
                     # pop the stack to D
-                    asm.extend(['@SP', 'A=M', 'D=M'])
+                    asm.extend(['@SP', 'A=M-1', 'D=M'])
 
-                    # Opening the address saved in R6 and setting D to it
-                    asm.extend(['@R6', 'A=M', 'M=D'])  
+                    # Opening the address saved in temp and setting D to it
+                    asm.extend(['@temp', 'A=M', 'M=D'])  
 
                     # Decrement SP
                     asm.extend(['@SP', 'M=M-1'])
