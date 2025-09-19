@@ -8,17 +8,18 @@ import re
 
 class CompilationEngine:
 
-    def __init__(self, tokenizer: JackTokenizer, vWriter: VMWriter, mode='vm'):
+    def __init__(self, tokenizer: JackTokenizer, vWriter: VMWriter, mode='vm', verbose=True):
 
         self.mode = mode
+        self.verbose = verbose
 
         self.tokenizer = tokenizer
         self.root = None
         self.vmWriter = vWriter
         self.symbol_table = SymbolTable()
 
-        # a processed buffer can record the processed tokens, this can be usefull for testing
-        self.processed_buffer = []
+        # a buffer to record the processed tokens, this can be useful for testing
+        self.jackcode_buffer = []
 
     @staticmethod
     def comment(funct):
@@ -181,13 +182,24 @@ class CompilationEngine:
         element = ET.SubElement(parent_element, tags[token_type])
         element.text = f' {token_value.strip('\"')} '
         
-        self.processed_buffer.append(token_value)
+        self.jackcode_buffer.append(token_value)
         self.tokenizer.advance()
 
         return element
 
     def compileClass(self):
         class_element = ET.Element('class')
+
+        # Since the class scope is populated using _buildSymbolTable
+        if self.verbose >= 1:
+            print(f'\t{'-'*80}')
+            print(f'\tClass: {self.symbol_table.class_name}')
+            print()
+            for var, properties in self.symbol_table.class_scope.items():
+                print(f"\t{var:<20}{properties}")
+            for var, properties in self.symbol_table.index_counters.items():
+                print(f"\t{var:<20}{properties}")
+            print()
         
         self._process_element(class_element, 'KEYWORD', 'class')
         self._process_element(class_element, 'IDENTIFIER')
@@ -249,6 +261,8 @@ class CompilationEngine:
         4. If the method happens to be a constructor, pushing the object pointer before return statement is implemented in compileReturn()
         '''
 
+        self.vmWriter.markRecodingStart()
+
         # subroutine Head
         subroutine_element = ET.Element('subroutineDec')
         subroutine_kind = self.tokenizer.peekCurrentToken()
@@ -279,6 +293,21 @@ class CompilationEngine:
         subroutineBody_element.append(self.compileStatements())
         self._process_element(subroutineBody_element, 'SYMBOL', '}')
         subroutine_element.append(subroutineBody_element)
+
+        self.vmWriter.markRecodingStop()
+
+        if self.verbose >= 2:
+            print(f'\t\t{'-'*72}')
+            print(f'\t\tSubroutine: {self.symbol_table.subroutine_name}')
+            print()
+            for var, properties in self.symbol_table.subroutine_scope.items():
+                print(f"\t\t{var:<20}{properties}")
+            print()
+            if self.verbose >= 3:
+                print('\t\t--\n')
+                print('\t\t', end='')
+                print("\n\t\t".join(self.vmWriter.getRecordedBuffer()))
+                print()
 
         return subroutine_element
 
@@ -627,11 +656,6 @@ if __name__ == '__main__':
         tokenizer = JackTokenizer(jack_code)
         vm_writer = VMWriter()
         compilation_engine = CompilationEngine(tokenizer, vm_writer)
-
-        compilation_engine.symbol_table.define_signature('Output.println', 'function', 'void', 1, None)
-        compilation_engine.symbol_table.define_signature('Memory.peek', 'function', 'int', 1, None)
-        compilation_engine.symbol_table.define_signature('Memory.poke', 'function', 'void', 2, None)
-        compilation_engine.symbol_table.define_signature('Memory.alloc', 'function', 'int', 1, None)
 
         compilation_engine.compile()
         print("\n".join(vm_writer.vmcode))
