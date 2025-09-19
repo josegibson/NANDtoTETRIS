@@ -8,24 +8,32 @@ input_path = os.path.join(os.path.dirname(__file__), "project_docs")
 output_path = os.path.join(os.path.dirname(__file__), "output")
 expected_output_path = os.path.join(os.path.dirname(__file__), "expected_output")
 
-
-@pytest.mark.parametrize("test_name", [
+tests = [
     "BasicTest",
     "PointerTest",
     "SimpleAdd",
     "StackTest",
     "StaticTest",
-    'BasicLoop'
-])
-def test_translation(test_name):
+    "BasicLoop",
+    "FibonacciSeries",
+    "SimpleFunction",
+    "NestedCall",
+    "FibonacciElement"
+]
 
-    input = os.path.join(input_path, f"{test_name}", f"{test_name}.vm")
+@pytest.mark.parametrize("test_name", tests)
+def test_vmt(test_name):
+
+
+    input = os.path.join(input_path, f"{test_name}")
+    vmt = VMTranslator(dest_dir=output_path)
+        
+    vmt.run(input)
+
+
+    # Testing with expected result
     output = os.path.join(output_path, f'{test_name}.asm')
     expected_output = os.path.join(expected_output_path, f"{test_name}.asm")
-
-    vmt = VMTranslator()
-        
-    vmt.translate(input, outdir=output_path)
 
     out = ""
     with open(output) as f:

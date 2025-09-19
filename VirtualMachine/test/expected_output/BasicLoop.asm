@@ -12,14 +12,13 @@ M=M+1
 @0
 D=A
 @LCL
-A=M
-D=D+A
-@temp
+D=D+M
+@R13
 M=D
 @SP
 A=M-1
 D=M
-@temp
+@R13
 A=M
 M=D
 @SP
@@ -68,14 +67,13 @@ M=M+1
 @0
 D=A
 @LCL
-A=M
-D=D+A
-@temp
+D=D+M
+@R13
 M=D
 @SP
 A=M-1
 D=M
-@temp
+@R13
 A=M
 M=D
 @SP
@@ -117,14 +115,13 @@ M=M+1
 @0
 D=A
 @ARG
-A=M
-D=D+A
-@temp
+D=D+M
+@R13
 M=D
 @SP
 A=M-1
 D=M
-@temp
+@R13
 A=M
 M=D
 @SP
@@ -148,7 +145,7 @@ M=M+1
 AM=M-1
 D=M
 @LOOP
-D;JGT
+D;JNE
 
 // push local 0
 @0
@@ -162,6 +159,3 @@ A=M
 M=D
 @SP
 M=M+1
-(END)
-@END
-0;JMP
