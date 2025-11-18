@@ -1,0 +1,12 @@
+class Main {
+    function void main() {
+        var Counter c;
+        let c = Counter.new(10);
+
+        do c.inc();
+        do c.inc();
+
+        do Output.printInt(c.get());  // prints 12
+        return;
+    }
+}

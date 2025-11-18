@@ -11,7 +11,7 @@ class Parser:
         pass                
 
     ''' Returns a tuple of signature: (type('A', 'C'), values)
-        A instruction values: the digits that follwo the @
+        A instruction values: the digits that follows the @
         C instruction values: (comp, dest, jump (default = null)) // use the table from the lecture
     '''
     def parse(self, lines):

@@ -1,51 +1,123 @@
-# The NAND to TETRIS Compiler Suite
+# Nand2Tetris Compiler Suite
 
-### **Overview**
+*A complete Jack → VM → Assembly → Hack toolchain, built from scratch.*
 
-This repository contains my complete, modern implementation of the NAND to TETRIS software suite. This project is not just a single program but a full suite of language translation tools, built from the ground up to demonstrate the entire compilation pipeline from a high-level, object-oriented language down to executable machine code.
+---
 
-The suite is composed of three distinct, yet interconnected, components:
+## Overview
 
-1.  **The Assembler:** Translates symbolic Hack Assembly language into binary machine code.
-2.  **The VM Translator:** Translates a high-level, stack-based virtual machine language into Hack Assembly.
-3.  **The Jack Compiler:** A full-featured compiler for the "Jack" language—a high-level, object-oriented language similar to Java—that compiles Jack source code into the VM language.
+This repository contains a fully implemented, modular compiler toolchain for the **Jack programming language**. This project reproduces the entire **software pipeline** from a high-level, object-oriented language down to executable machine code for the Hack computer.
 
-The complete compilation pipeline can be visualized as follows:
+This project was built to showcase:
+
+*   Clean, modular architecture
+*   Multi-stage compilation
+*   Real compiler techniques (tokenization, recursive descent parsing, symbol tables, and code generation)
+
+---
+
+## Demo
+
+![alt text](demo.gif)
+
+---
+
+## Project Structure
 
 ```
-             Compiler            VM            Assembler
-Source Code ---------> Bytecode ----> Assembly --------> Binary
-````
+/Assembler/      # Translates .asm -> .hack machine code
+/VMTranslator/ # Translates .vm -> .asm assembly language
+/Compiler/       # Translates .jack -> .vm virtual machine code
+/examples/       # Example programs for the toolchain
+```
 
-### **Key Architectural Highlights**
+---
 
-This project was built with a focus on clean architecture, modularity, and robust design patterns common in modern compiler construction.
+## Usage
 
-#### **1. Two-Pass Compiler Architecture**
+This repository includes a master script, `main.py`, that automates the entire compilation pipeline. This is the recommended way to compile your Jack projects.
 
-Both the Assembler and the final Jack Compiler are built using a **two-pass architecture**. This design is fundamental to solving the problem of **forward references** (e.g., using a variable or calling a function before it has been declared).
+### Automated Pipeline
 
-* **First Pass (Symbol Table Construction):** The compiler makes an initial pass through the source code with the sole purpose of building a complete **Symbol Table**. This table maps every identifier (variable, label, subroutine name) to its semantic properties (type, kind, scope, address).
-* **Second Pass (Code Generation):** With the completed symbol table, the compiler makes a second pass to generate the final code. It now has the full context needed to correctly resolve all symbols.
+The `main.py` script in the root directory handles the full Jack → VM → Assembly → Hack compilation process in a single step.
 
-#### **2. Modular, Single-Responsibility Design**
+**1. Clone the repo**
 
-The VM Translator and Compiler are broken down into logical, decoupled components, each with a single responsibility:
+```bash
+git clone <repo_url>
+cd NANDtoTETRIS
+```
 
-* **The Tokenizer (`JackTokenizer`):** Handles lexical analysis, breaking the raw source code into a stream of tokens. It was enhanced with a `peek()` method to enable look-ahead parsing.
-* **The Parser/Engine (`CompilationEngine`):** A recursive descent parser that handles syntax analysis, applying the language's grammar rules to the token stream.
-* **The Symbol Table (`SymbolTable`):** Manages all semantic information, tracking identifier scopes and properties.
-* **The Code Generator (`VMWriter`):** Provides a clean API for writing the target language (VM code), decoupling the parser from the specifics of the output format.
+**2. Run the pipeline**
 
-### **How to Use the Jack Compiler**
+Use `python main.py` and point it at a Jack file or a directory of Jack files.
 
-The main entry point for the compiler is the `JackAnalyzer.py` script. It is a command-line tool designed to compile a single `.jack` file or an entire directory of `.jack` files.
+```bash
+# From D:/NANDtoTETRIS/
+# Compile an entire project (e.g., examples/Counter)
+python main.py examples/Counter --output examples/Counter
+```
 
-#### **Prerequisites**
+This will generate all intermediate files (`.vm`, `.asm`) and the final `.hack` machine code in the specified output directory.
 
-* Python 3.x
+### Manual Compilation (Alternative)
 
-#### **Execution**
+If you want to run each stage of the pipeline manually, follow these steps.
+
+**1. Clone the repo**
+
+```bash
+git clone <repo_url>
+cd NANDtoTETRIS
+```
+
+**2. Compile a Jack program (Jack → VM)**
+
+Navigate to the `Compiler` directory and run the analyzer on a source file or directory.
+
+```bash
+# From D:/NANDtoTETRIS/
+cd Compiler/
+python JackAnalyzer.py ../examples/SimpleAdd/ --output ../examples/SimpleAdd/
+```
+
+**3. Translate VM → Assembly**
+
+Navigate to the `VMTranslator` directory to run the translator.
+
+```bash
+# From D:/NANDtoTETRIS/
+cd VMTranslator/
+python main.py ../examples/SimpleAdd/
+```
+
+**4. Assemble to Hack machine code**
+
+Navigate to the `Assembler` directory to run the final assembly step.
+
+```bash
+# From D:/NANDtoTETRIS/
+cd Assembler/
+python main.py ../examples/SimpleAdd/Main.asm
+```
+
+**5. Run on the Nand2Tetris CPU Emulator**
+
+Load the generated `Main.hack` file into the official CPU emulator to see the result.
+
+### Running VM Code with OS Emulation
+
+For VM code that interacts with the operating system, it is recommended to run the generated `.vm` files directly on the official Nand2Tetris VM Emulator. This emulator provides the necessary OS emulation capabilities.
+
+### Jack Compiler Details
+
+The main entry point for the compiler is the `JackAnalyzer.py` script.
+
+**Prerequisites**
+
+*   Python 3.x
+
+**Execution**
 
 Navigate to the `Compiler/` directory and run the analyzer from your terminal.
 
@@ -55,29 +127,88 @@ cd Compiler/
 
 # Run the analyzer on a source file or directory
 python JackAnalyzer.py <path/to/source.jack_or_directory>
-````
+```
 
-#### **Command-Line Arguments**
+**Command-Line Arguments**
 
 The analyzer accepts several optional flags to control its behavior:
 
-  * `--output <directory>`: Specify a directory to write the output `.vm` files to. If omitted, the output is not saved.
-  * `-m, --mode [vm|xml]`: Choose the output mode. Defaults to `vm` for code generation. Use `xml` to generate a parse tree for debugging.
-  * `-v, -vv, -vvv`: Increase the output verbosity for debugging.
-      * `-v`: Prints class-level scope information.
-      * `-vv`: Also prints subroutine-level scope information.
-      * `-vvv`: Also prints the generated VM code for each subroutine.
+*   `--output <directory>`: Specify a directory to write the output `.vm` files to. If omitted, the output is not saved.
+*   `-m, --mode [vm|xml]`: Choose the output mode. Defaults to `vm` for code generation. Use `xml` to generate a parse tree for debugging.
+*   `-v, -vv, -vvv`: Increase the output verbosity for debugging.
+    *   `-v`: Prints class-level scope information.
+    *   `-vv`: Also prints subroutine-level scope information.
+    *   `-vvv`: Also prints the generated VM code for each subroutine.
 
 **Example:**
 
 ```bash
-# Compile the entire 'Pong' project and see full debug output
-python JackAnalyzer.py ../projects/11/Pong -vvv --output ../compiled_output/
+# Compile an entire project and see full debug output
+python JackAnalyzer.py ../examples/Counter/ -vvv --output ../compiled_output/
 ```
 
-### Future Vision & Roadmap
-This compiler suite serves as the robust back-end for a planned interactive educational tool. The next phase of the project is to build a simple front-end that will leverage this engine to provide:
+---
 
-- A multi-pane editor to show Jack, VM, and Assembly code side-by-side.
-- 
-- A visual simulation of the stack and memory segments as the VM code executes.
+## Architecture
+
+This project was built with a focus on clean architecture and modular, single-responsibility design patterns.
+
+### 1. Two-Pass Architecture
+
+Both the Assembler and the Jack Compiler use a **two-pass architecture** to handle forward references (e.g., using a variable or calling a function before it is declared).
+
+*   **First Pass (Symbol Table Construction):** The compiler scans the source code to build a complete **Symbol Table**, mapping every identifier (variable, label, subroutine) to its properties (type, kind, scope, address).
+*   **Second Pass (Code Generation):** With the complete symbol table, the compiler makes a second pass to generate the final code, correctly resolving all symbols.
+
+### 2. Modular Components
+
+The VM Translator and Compiler are broken down into logical, decoupled components:
+
+*   **The Tokenizer (`JackTokenizer`):** Handles lexical analysis, breaking raw source code into a stream of tokens. It was enhanced with a `peek()` method to enable look-ahead parsing.
+*   **The Parser/Engine (`CompilationEngine`):** A recursive descent parser that handles syntax analysis, applying the language's grammar rules to the token stream.
+*   **The Symbol Table (`SymbolTable`):** Manages all semantic information, tracking identifier scopes (class, subroutine) and properties.
+*   **The Code Generator (`VMWriter`):** Provides a clean API for writing the target language (VM code), decoupling the parser from the specifics of the output format.
+
+---
+
+## Example Program
+
+A minimal single-file Jack program that demonstrates the pipeline:
+
+**`examples/SimpleAdd/Main.jack`:**
+
+```jack
+class Main {
+    function int add(int a, int b) {
+        return a + b;
+    }
+
+    function void main() {
+        do Output.printInt(Main.add(2, 3));
+        return;
+    }
+}
+```
+
+This compiles to VM → ASM → Hack and prints `5` on the screen when run in the CPU Emulator.
+
+---
+
+## Requirements
+
+*   Python 3.x
+*   Official Nand2Tetris tools (for running `.hack` binaries)
+
+---
+
+## Roadmap
+
+*   Add simple IDE frontend for Jack/VM/ASM side-by-side view
+*   Add support for the Jack OS libraries (separate repo)
+*   Optional: build higher-level demos (e.g., Tetris)
+
+---
+
+## Notes
+
+This repository focuses **only** on the compiler toolchain. The Jack OS library and application-level programs (e.g., Tetris) will be in separate repositories.

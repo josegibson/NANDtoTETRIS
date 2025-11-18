@@ -76,7 +76,7 @@ class JackTokenizer:
 
 if __name__ == '__main__':
     test_jack_code = """
-    // trsdyfguhijok yrtdyfguhb ytuguhre $*^&GYUIBV FT&%D
+    // sample comment
     
     class TokenTest {
         field int myVar;
