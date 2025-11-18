@@ -4,7 +4,10 @@ from Convert import Convert
 
 import sys
 
+
 def clean(fullcode):
+    """Transforms astring of code into a list of assembly instructions,
+    omitting blank lines and comments."""
     cleaned_lines = []
     for line in fullcode.split('\n'):
 

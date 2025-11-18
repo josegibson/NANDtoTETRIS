@@ -1,0 +1,18 @@
+class Counter {
+
+    field int value;
+
+    constructor Counter new(int start) {
+        let value = start;
+        return this;
+    }
+
+    method void inc() {
+        let value = value + 1;
+        return;
+    }
+
+    method int get() {
+        return value;
+    }
+}

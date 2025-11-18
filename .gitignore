@@ -1,10 +1,11 @@
 
 
-projects/
-tools/
+roadmap/
 
 .vscode
 **/.pytest_cache
 **/__pycache__/
 **/*.pyc
 **/test/
+
+OS/
