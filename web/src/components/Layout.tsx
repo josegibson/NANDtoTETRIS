@@ -17,7 +17,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, onCompile, isCompiling
                     <button className="compile-btn" onClick={onCompile} disabled={isCompiling}>
                         {isCompiling ? 'Compiling...' : '▶ Compile Project'}
                     </button>
-                    <button className="download-btn">Download ▼</button>
                 </div>
             </header>
             <main className="main-content">

@@ -3,7 +3,7 @@ import { Layout } from './components/Layout';
 import { SplitPane } from './components/SplitPane';
 import { FileExplorer, FileItem } from './components/FileExplorer';
 import { CodeEditor } from './components/Editor';
-import { OutputTabs, CompilationResult } from './components/OutputTabs';
+import { OutputTabs, CompilationResult, OutputTab } from './components/OutputTabs';
 import './App.css';
 
 const DEFAULT_FILES: FileItem[] = [
@@ -34,6 +34,7 @@ function App() {
     const [activeFileName, setActiveFileName] = useState<string>('Main.jack');
     const [compilationResult, setCompilationResult] = useState<CompilationResult | null>(null);
     const [isCompiling, setIsCompiling] = useState(false);
+    const [activeTab, setActiveTab] = useState<OutputTab>('vm');
 
     const activeFile = files.find(f => f.name === activeFileName);
 
@@ -88,6 +89,7 @@ function App() {
                     asm: data.asm,
                     hack: data.hack,
                 });
+                setActiveTab('vm');
             } else {
                 setCompilationResult({
                     vm: [],
@@ -107,6 +109,8 @@ function App() {
             setIsCompiling(false);
         }
     };
+
+
 
     return (
         <Layout onCompile={handleCompile} isCompiling={isCompiling}>
@@ -136,7 +140,11 @@ function App() {
                     </div>
                 }
                 right={
-                    <OutputTabs result={compilationResult} />
+                    <OutputTabs
+                        result={compilationResult}
+                        activeTab={activeTab}
+                        onTabChange={setActiveTab}
+                    />
                 }
             />
         </Layout>
