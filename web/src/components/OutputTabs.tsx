@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { CodeEditor } from './Editor';
+import { VMEmulator } from './VMEmulator';
+import { VerticalSplitPane } from './VerticalSplitPane';
 import './OutputTabs.css';
 
 export interface CompilationResult {
@@ -9,12 +11,15 @@ export interface CompilationResult {
     error?: string;
 }
 
+export type OutputTab = 'vm' | 'asm' | 'hack';
+
 interface OutputTabsProps {
     result: CompilationResult | null;
+    activeTab: OutputTab;
+    onTabChange: (tab: OutputTab) => void;
 }
 
-export const OutputTabs: React.FC<OutputTabsProps> = ({ result }) => {
-    const [activeTab, setActiveTab] = useState<'vm' | 'asm' | 'hack'>('vm');
+export const OutputTabs: React.FC<OutputTabsProps> = ({ result, activeTab, onTabChange }) => {
     const [activeVmFile, setActiveVmFile] = useState<string>('');
 
     // Update active VM file when result changes
@@ -44,7 +49,7 @@ export const OutputTabs: React.FC<OutputTabsProps> = ({ result }) => {
         );
     }
 
-    const renderContent = () => {
+    const renderCodeContent = () => {
         switch (activeTab) {
             case 'vm':
                 const vmFile = result.vm.find(f => f.name === activeVmFile);
@@ -112,31 +117,46 @@ export const OutputTabs: React.FC<OutputTabsProps> = ({ result }) => {
         }
     };
 
-    return (
+    const topSection = (
         <div className="output-tabs">
             <div className="tabs-header">
                 <button
                     className={`tab-btn ${activeTab === 'vm' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('vm')}
+                    onClick={() => onTabChange('vm')}
                 >
                     VM Code
                 </button>
+
                 <button
                     className={`tab-btn ${activeTab === 'asm' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('asm')}
+                    onClick={() => onTabChange('asm')}
                 >
                     Assembly
                 </button>
                 <button
                     className={`tab-btn ${activeTab === 'hack' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('hack')}
+                    onClick={() => onTabChange('hack')}
                 >
                     Binary
                 </button>
             </div>
             <div className="tabs-body">
-                {renderContent()}
+                {renderCodeContent()}
             </div>
         </div>
+    );
+
+    const bottomSection = (
+        <div style={{ height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <VMEmulator vmFiles={result.vm} />
+        </div>
+    );
+
+    return (
+        <VerticalSplitPane
+            top={topSection}
+            bottom={bottomSection}
+            initialSplit={50}
+        />
     );
 };

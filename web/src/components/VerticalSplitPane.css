@@ -1,0 +1,26 @@
+.vertical-split-pane {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+}
+
+.vertical-split-pane .pane {
+    overflow: hidden;
+}
+
+.vertical-split-pane .pane.top {
+    border-bottom: 1px solid var(--border-color, #3a3a3a);
+}
+
+.vertical-split-pane .resizer.horizontal {
+    height: 4px;
+    background: var(--border-color, #3a3a3a);
+    cursor: row-resize;
+    flex-shrink: 0;
+}
+
+.vertical-split-pane .resizer.horizontal:hover {
+    background: var(--primary-color, #007acc);
+}
