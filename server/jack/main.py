@@ -3,21 +3,21 @@ import sys
 import argparse
 import tempfile
 import shutil
-import subprocess
+
+from .Compiler.JackAnalyzer import JackAnalyzer
+from .VMTranslator.main import VMTranslator
+from .Assembler.main import assemble_file
 
 
 def compile_jack_to_hack(input_path, output_dir, keep_temp=True, verbose=0):
     """Run the repository pipeline to compile a .jack file (or all .jack in a dir)
     into a .hack file in output_dir.
 
-    Steps (uses existing scripts in the repo):
-    1. Run Compiler/JackAnalyzer.py to produce a .vm file into a temporary dir
-    2. Run VMTranslator/main.py with cwd=output_dir to translate the .vm -> .asm
-    3. Run Assembler/main.py to assemble the .asm -> .hack
+    Steps (uses existing modules in the package):
+    1. Run JackAnalyzer to produce a .vm file into a temporary dir
+    2. Run VMTranslator to translate the .vm -> .asm
+    3. Run assemble_file to assemble the .asm -> .hack
     """
-
-    # base directory of this script (repo root)
-    script_dir = os.path.dirname(os.path.abspath(__file__))
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -51,7 +51,9 @@ def compile_jack_to_hack(input_path, output_dir, keep_temp=True, verbose=0):
             vm_out_dir = output_dir if keep_temp else tempdir
             if verbose:
                 print(f"[1/3] Generating .vm for directory {input_path} -> {vm_out_dir}")
-            subprocess.run([sys.executable, os.path.join(script_dir, 'Compiler','JackAnalyzer.py'), input_path, '--output', vm_out_dir, '-m', 'vm'], check=True)
+            
+            # Use JackAnalyzer directly
+            JackAnalyzer(input_path, vm_out_dir, mode='vm', verbose=verbose)
 
             # Verify at least one vm file exists
             vm_files = [f for f in os.listdir(vm_out_dir) if f.lower().endswith('.vm')]
@@ -61,8 +63,10 @@ def compile_jack_to_hack(input_path, output_dir, keep_temp=True, verbose=0):
             # 2) Translate the entire VM directory -> single .asm
             if verbose:
                 print(f"[2/3] Translating .vm -> .asm: {vm_out_dir} -> {output_dir}")
-            # Run VM translator once, with cwd=output_dir so the .asm is written there
-            subprocess.run([sys.executable, os.path.join(script_dir, 'VMTranslator','main.py'), vm_out_dir], cwd=output_dir, check=True)
+            
+            # Use VMTranslator directly
+            vmt = VMTranslator(dest_dir=output_dir)
+            vmt.run(vm_out_dir)
 
             # Determine asm and hack filenames based on the input directory name
             project_name = os.path.basename(os.path.normpath(input_path))
@@ -73,14 +77,15 @@ def compile_jack_to_hack(input_path, output_dir, keep_temp=True, verbose=0):
             # 3) Assemble the combined .asm -> single .hack
             if verbose:
                 print(f"[3/3] Assembling .asm -> .hack: {asmfile}")
-            subprocess.run([sys.executable, os.path.join(script_dir, 'Assembler','main.py'), asmfile], check=True)
+            
+            # Use assemble_file directly
+            hackfile_path = assemble_file(asmfile)
 
-            hackfile = os.path.join(output_dir, project_name + '.hack')
-            if not os.path.exists(hackfile):
-                raise FileNotFoundError(f'Expected HACK file not found: {hackfile}')
+            if not os.path.exists(hackfile_path):
+                raise FileNotFoundError(f'Expected HACK file not found: {hackfile_path}')
 
             if verbose:
-                print(f"Done: {hackfile}")
+                print(f"Done: {hackfile_path}")
 
         else:
             # Single-file flow (unchanged): produce per-file .vm/.asm/.hack
@@ -91,16 +96,21 @@ def compile_jack_to_hack(input_path, output_dir, keep_temp=True, verbose=0):
                 vm_out_dir = output_dir if keep_temp else tempdir
                 if verbose:
                     print(f"[1/3] Generating .vm for {jackfile} -> {vm_out_dir}")
-                subprocess.run([sys.executable, os.path.join(script_dir, 'Compiler','JackAnalyzer.py'), jackfile, '--output', vm_out_dir, '-m', 'vm'], check=True)
+                
+                # Use JackAnalyzer directly
+                JackAnalyzer(jackfile, vm_out_dir, mode='vm', verbose=verbose)
 
                 vmfile = os.path.join(vm_out_dir, base + '.vm')
                 if not os.path.exists(vmfile):
                     raise FileNotFoundError(f'Expected VM file not found: {vmfile}')
 
-                # 2) .vm -> .asm (run VM translator with cwd=output_dir so asm is written there)
+                # 2) .vm -> .asm
                 if verbose:
                     print(f"[2/3] Translating .vm -> .asm: {vmfile} -> {output_dir}")
-                subprocess.run([sys.executable, os.path.join(script_dir, 'VMTranslator','main.py'), vmfile], cwd=output_dir, check=True)
+                
+                # Use VMTranslator directly
+                vmt = VMTranslator(dest_dir=output_dir)
+                vmt.run(vmfile)
 
                 asmfile = os.path.join(output_dir, base + '.asm')
                 if not os.path.exists(asmfile):
@@ -109,14 +119,15 @@ def compile_jack_to_hack(input_path, output_dir, keep_temp=True, verbose=0):
                 # 3) .asm -> .hack (assemble)
                 if verbose:
                     print(f"[3/3] Assembling .asm -> .hack: {asmfile}")
-                subprocess.run([sys.executable, os.path.join(script_dir, 'Assembler','main.py'), asmfile], check=True)
+                
+                # Use assemble_file directly
+                hackfile_path = assemble_file(asmfile)
 
-                hackfile = os.path.join(output_dir, base + '.hack')
-                if not os.path.exists(hackfile):
-                    raise FileNotFoundError(f'Expected HACK file not found: {hackfile}')
+                if not os.path.exists(hackfile_path):
+                    raise FileNotFoundError(f'Expected HACK file not found: {hackfile_path}')
 
                 if verbose:
-                    print(f"Done: {hackfile}")
+                    print(f"Done: {hackfile_path}")
 
     finally:
         # remove tempdir only when we used it for VM output

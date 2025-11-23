@@ -1,4 +1,4 @@
-from SymbolManager import SymbolManager
+from .SymbolManager import SymbolManager
 
 '''
 Takes in the assembly code and parse it into different parts of the code

@@ -1,9 +1,9 @@
 import os
 import glob
 
-from JackTokenizer import JackTokenizer
-from CompilationEngine import CompilationEngine
-from VMWritter import VMWriter
+from .JackTokenizer import JackTokenizer
+from .CompilationEngine import CompilationEngine
+from .VMWritter import VMWriter
 
 class JackAnalyzer:
     

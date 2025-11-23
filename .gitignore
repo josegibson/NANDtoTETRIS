@@ -1,12 +1,8 @@
 
-
-roadmap/
-
 .vscode
 **/.pytest_cache
 **/__pycache__/
 **/*.pyc
 **/test/
 
-OS/
 web/node_modules/

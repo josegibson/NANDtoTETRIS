@@ -1,6 +1,6 @@
-from JackTokenizer import JackTokenizer
-from VMWritter import VMWriter
-from SymbolTable import SymbolTable
+from .JackTokenizer import JackTokenizer
+from .VMWritter import VMWriter
+from .SymbolTable import SymbolTable
 
 import xml.etree.ElementTree as ET
 from xml.dom import minidom

@@ -1,19 +1,17 @@
 import os
 import sys
-import subprocess
 import tempfile
 import shutil
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
+# Import the jack compiler module
+from jack.Compiler.JackAnalyzer import JackAnalyzer
+from jack.VMTranslator.main import VMTranslator
+from jack.Assembler.main import assemble_file
+
 app = Flask(__name__)
 CORS(app)
-
-# Path to the root of the repository
-REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-COMPILER_DIR = os.path.join(REPO_ROOT, 'Compiler')
-VM_TRANSLATOR_DIR = os.path.join(REPO_ROOT, 'VMTranslator')
-ASSEMBLER_DIR = os.path.join(REPO_ROOT, 'Assembler')
 
 @app.route('/health', methods=['GET'])
 def health():
@@ -52,17 +50,11 @@ def compile_project():
                 f.write(file['content'])
         
         # 2. Run Jack Compiler (Jack -> VM)
-        # Output VM files to the same directory
-        jack_analyzer_script = os.path.join(COMPILER_DIR, 'JackAnalyzer.py')
+        # Use JackAnalyzer directly instead of subprocess
         try:
-            subprocess.run(
-                [sys.executable, jack_analyzer_script, temp_dir, '--output', temp_dir],
-                check=True,
-                capture_output=True,
-                text=True
-            )
-        except subprocess.CalledProcessError as e:
-            return jsonify({'error': f"Jack Compilation Failed:\n{e.stderr}"}), 400
+            JackAnalyzer(temp_dir, temp_dir, mode='vm', verbose=0)
+        except Exception as e:
+            return jsonify({'error': f"Jack Compilation Failed:\n{str(e)}"}), 400
 
         # Read generated VM files
         vm_files = []
@@ -75,24 +67,17 @@ def compile_project():
              return jsonify({'error': "No VM files generated"}), 400
 
         # 3. Run VM Translator (VM -> ASM)
-        # VMTranslator/main.py takes the directory as input and produces a .asm file
-        vm_translator_script = os.path.join(VM_TRANSLATOR_DIR, 'main.py')
+        # Use VMTranslator directly instead of subprocess
         try:
-            subprocess.run(
-                [sys.executable, vm_translator_script, temp_dir],
-                check=True,
-                capture_output=True,
-                text=True,
-                cwd=temp_dir
-            )
-        except subprocess.CalledProcessError as e:
-             return jsonify({'error': f"VM Translation Failed:\n{e.stderr}"}), 400
+            vmt = VMTranslator(dest_dir=temp_dir)
+            vmt.run(temp_dir)
+        except Exception as e:
+             return jsonify({'error': f"VM Translation Failed:\n{str(e)}"}), 400
 
         # Find the generated ASM file
         asm_content = ""
-        asm_filename = os.path.basename(temp_dir) + ".asm" # VMTranslator usually names it after the dir
-        # However, the repo's VMTranslator might name it differently. 
-        # Let's look for any .asm file
+        asm_filename = os.path.basename(temp_dir) + ".asm"
+        # Look for any .asm file
         found_asm = False
         for f in os.listdir(temp_dir):
             if f.endswith('.asm'):
@@ -106,25 +91,18 @@ def compile_project():
              return jsonify({'error': "No ASM file generated"}), 400
 
         # 4. Run Assembler (ASM -> Hack)
-        assembler_script = os.path.join(ASSEMBLER_DIR, 'main.py')
+        # Use assemble_file directly instead of subprocess
         asm_file_path = os.path.join(temp_dir, asm_filename)
         try:
-            subprocess.run(
-                [sys.executable, assembler_script, asm_file_path],
-                check=True,
-                capture_output=True,
-                text=True
-            )
-        except subprocess.CalledProcessError as e:
-             return jsonify({'error': f"Assembly Failed:\n{e.stderr}"}), 400
+            hack_file_path = assemble_file(asm_file_path)
+        except Exception as e:
+             return jsonify({'error': f"Assembly Failed:\n{str(e)}"}), 400
 
-        # Find the generated Hack file
+        # Read the generated Hack file
         hack_content = ""
-        for f in os.listdir(temp_dir):
-            if f.endswith('.hack'):
-                with open(os.path.join(temp_dir, f), 'r') as hack_file:
-                    hack_content = hack_file.read()
-                    break
+        if os.path.exists(hack_file_path):
+            with open(hack_file_path, 'r') as hack_file:
+                hack_content = hack_file.read()
         
         return jsonify({
             'vm': vm_files,
