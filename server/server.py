@@ -11,7 +11,13 @@ from jack.VMTranslator.main import VMTranslator
 from jack.Assembler.main import assemble_file
 
 app = Flask(__name__)
-CORS(app)
+
+# Configure CORS for production and development
+ALLOWED_ORIGINS = os.getenv('ALLOWED_ORIGINS', '*')
+if ALLOWED_ORIGINS == '*':
+    CORS(app)
+else:
+    CORS(app, origins=ALLOWED_ORIGINS.split(','))
 
 @app.route('/health', methods=['GET'])
 def health():
@@ -117,4 +123,6 @@ def compile_project():
         shutil.rmtree(temp_dir)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    port = int(os.getenv('PORT', 5000))
+    debug = os.getenv('FLASK_ENV') != 'production'
+    app.run(host='0.0.0.0', port=port, debug=debug)
