@@ -19,7 +19,6 @@ services:
   - type: web
     name: nand-compiler-web
     runtime: static
-    region: oregon
     plan: free
     branch: main
     buildCommand: "cd web && npm install && VITE_API_URL=$VITE_API_URL npm run build"
