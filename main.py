@@ -12,7 +12,7 @@ def compile_jack_to_hack(input_path, output_dir, keep_temp=True, verbose=0):
 
     Steps (uses existing scripts in the repo):
     1. Run Compiler/JackAnalyzer.py to produce a .vm file into a temporary dir
-    2. Run VirtualMachine/main.py with cwd=output_dir to translate the .vm -> .asm
+    2. Run VMTranslator/main.py with cwd=output_dir to translate the .vm -> .asm
     3. Run Assembler/main.py to assemble the .asm -> .hack
     """
 
@@ -62,7 +62,7 @@ def compile_jack_to_hack(input_path, output_dir, keep_temp=True, verbose=0):
             if verbose:
                 print(f"[2/3] Translating .vm -> .asm: {vm_out_dir} -> {output_dir}")
             # Run VM translator once, with cwd=output_dir so the .asm is written there
-            subprocess.run([sys.executable, os.path.join(script_dir, 'VirtualMachine','main.py'), vm_out_dir], cwd=output_dir, check=True)
+            subprocess.run([sys.executable, os.path.join(script_dir, 'VMTranslator','main.py'), vm_out_dir], cwd=output_dir, check=True)
 
             # Determine asm and hack filenames based on the input directory name
             project_name = os.path.basename(os.path.normpath(input_path))
@@ -100,7 +100,7 @@ def compile_jack_to_hack(input_path, output_dir, keep_temp=True, verbose=0):
                 # 2) .vm -> .asm (run VM translator with cwd=output_dir so asm is written there)
                 if verbose:
                     print(f"[2/3] Translating .vm -> .asm: {vmfile} -> {output_dir}")
-                subprocess.run([sys.executable, os.path.join(script_dir, 'VirtualMachine','main.py'), vmfile], cwd=output_dir, check=True)
+                subprocess.run([sys.executable, os.path.join(script_dir, 'VMTranslator','main.py'), vmfile], cwd=output_dir, check=True)
 
                 asmfile = os.path.join(output_dir, base + '.asm')
                 if not os.path.exists(asmfile):
